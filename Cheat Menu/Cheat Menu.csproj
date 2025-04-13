@@ -1,21 +1,33 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<TargetFramework>net6.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>disable</Nullable>
 		<RootNamespace>Cheat_Menu</RootNamespace>
-		<LangVersion>default</LangVersion>
+		<LangVersion>en_US</LangVersion>
 		<IsPackable>false</IsPackable>
-		<AssemblyVersion>1.0.0.0</AssemblyVersion>
-		<FileVersion>1.0.0.0</FileVersion>
+		<AssemblyVersion>2.0.0.0</AssemblyVersion>
+		<FileVersion>2.0.0.0</FileVersion>
 		<NeutralLanguage>en-US</NeutralLanguage>
 		<AssemblyName>Cheat_Menu</AssemblyName>
 		<LangVersion>latest</LangVersion>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Platforms>AnyCPU;x64</Platforms>
 	</PropertyGroup>
+	<PropertyGroup>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<NoWarn>CS0414;CS0649;CS0169;CS0219</NoWarn>
+	</PropertyGroup>
+
 
 	<ItemGroup>
+		<Reference Include="UniverseLib.ML.IL2CPP.Interop">
+			<HintPath>C:\Program Files (x86)\Steam\steamapps\common\Schedule I\UserLibs\UniverseLib.ML.IL2CPP.Interop.dll</HintPath>
+			<Private>False</Private>
+		</Reference>
 		<Reference Include="Assembly-CSharp-firstpass">
 			<HintPath>C:\Program Files (x86)\Steam\steamapps\common\Schedule I\MelonLoader\Il2CppAssemblies\Assembly-CSharp-firstpass.dll</HintPath>
 		</Reference>
@@ -455,6 +467,7 @@
 			<HintPath>C:\Program Files (x86)\Steam\steamapps\common\Schedule I\MelonLoader\net6\Il2CppInterop.Common.dll</HintPath>
 		</Reference>
 
+		
 	</ItemGroup>
 
 	<PropertyGroup>
@@ -464,12 +477,6 @@
 
 	<ItemGroup>
 		<Compile Include="CheatMenu.cs" />
-	</ItemGroup>
-
-	<ItemGroup>
-	  <None Update="link.xml">
-	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-	  </None>
 	</ItemGroup>
 	
 	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
