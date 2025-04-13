@@ -1,6 +1,6 @@
 # Modern Cheat Menu
 
-**Version**: 2.0.0  
+**Version**: 2.0.1  
 **Author**: darkness  
 **Target Game**: Schedule I (by TVGS)  
 **Mod Loader**: MelonLoader  
