@@ -6,8 +6,8 @@
 		<RootNamespace>Cheat_Menu</RootNamespace>
 		<LangVersion>en_US</LangVersion>
 		<IsPackable>false</IsPackable>
-		<AssemblyVersion>2.0.0.0</AssemblyVersion>
-		<FileVersion>2.0.0.0</FileVersion>
+		<AssemblyVersion>2.0.0</AssemblyVersion>
+		<FileVersion>2.0.1</FileVersion>
 		<NeutralLanguage>en-US</NeutralLanguage>
 		<AssemblyName>Cheat_Menu</AssemblyName>
 		<LangVersion>latest</LangVersion>
@@ -24,10 +24,6 @@
 
 
 	<ItemGroup>
-		<Reference Include="UniverseLib.ML.IL2CPP.Interop">
-			<HintPath>C:\Program Files (x86)\Steam\steamapps\common\Schedule I\UserLibs\UniverseLib.ML.IL2CPP.Interop.dll</HintPath>
-			<Private>False</Private>
-		</Reference>
 		<Reference Include="Assembly-CSharp-firstpass">
 			<HintPath>C:\Program Files (x86)\Steam\steamapps\common\Schedule I\MelonLoader\Il2CppAssemblies\Assembly-CSharp-firstpass.dll</HintPath>
 		</Reference>

@@ -30,12 +30,12 @@ using Il2CppScheduleOne.AvatarFramework.Equipping;
 using UnityEngine.UIElements.Internal;
 using Il2CppScheduleOne.Map;
 using Il2CppScheduleOne.PlayerScripts.Health;
-using UniverseLib;
-using UniverseLib.Config;
-using UniverseLib.Input;
-using UniverseLib.Runtime;
-using static UniverseLib.Il2CppReflection;
-using UniverseLib.UI;
+//using UniverseLib;
+//using UniverseLib.Config;
+//using UniverseLib.Input;
+//using UniverseLib.Runtime;
+//using static UniverseLib.Il2CppReflection;
+//using UniverseLib.UI;
 using System.Runtime.InteropServices;
 using Il2CppInterop.Common;
 using Il2CppNewtonsoft.Json;
@@ -711,7 +711,7 @@ namespace Modern_Cheat_Menu
                 _harmony.PatchAll(typeof(Core).Assembly);
 
                 // Initialize UniverseLib
-                UniverseLib.Universe.Init();
+                //UniverseLib.Universe.Init();
 
                 // Initialize HWID Spoofer
                 InitializeHwidPatch();
@@ -3700,6 +3700,12 @@ namespace Modern_Cheat_Menu
             {
                 LoggerInstance.Error($"Error patching network damage methods: {ex}");
             }
+        }
+
+        // Harmony prefix method must be static
+        private static bool BlockNetworkDamageMethod()
+        {
+            return !_staticPlayerGodmodeEnabled;
         }
 
         private void PatchMethod(Type targetType, string methodName, HarmonyMethod prefix)
