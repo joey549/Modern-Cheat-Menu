@@ -3,13 +3,13 @@
 		<TargetFramework>net6.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>disable</Nullable>
-		<RootNamespace>Cheat_Menu</RootNamespace>
+		<RootNamespace>Modern_Cheat_Menu</RootNamespace>
 		<LangVersion>en_US</LangVersion>
 		<IsPackable>false</IsPackable>
-		<AssemblyVersion>2.0.0</AssemblyVersion>
-		<FileVersion>2.0.1</FileVersion>
+		<AssemblyVersion>2.0.2</AssemblyVersion>
+		<FileVersion>2.0.2</FileVersion>
 		<NeutralLanguage>en-US</NeutralLanguage>
-		<AssemblyName>Cheat_Menu</AssemblyName>
+		<AssemblyName>Modern_Cheat_Menu</AssemblyName>
 		<LangVersion>latest</LangVersion>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Platforms>AnyCPU;x64</Platforms>
@@ -20,7 +20,13 @@
 
 	<PropertyGroup>
 		<NoWarn>CS0414;CS0649;CS0169;CS0219</NoWarn>
+		<NoWarn>CS0414;CS0649;CS0169;CS0219</NoWarn>
 	</PropertyGroup>
+
+	<ItemGroup>
+	  <Compile Include="main.cs" />
+	  <Compile Include="modinfo.cs" />
+	</ItemGroup>
 
 
 	<ItemGroup>
@@ -467,13 +473,9 @@
 	</ItemGroup>
 
 	<PropertyGroup>
-		<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+		<!--<AllowUnsafeBlocks>True</AllowUnsafeBlocks>-->
 		<EnableDefaultCompileItems>false</EnableDefaultCompileItems>
 	</PropertyGroup>
-
-	<ItemGroup>
-		<Compile Include="CheatMenu.cs" />
-	</ItemGroup>
 	
 	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
 		<Exec Command="COPY &quot;$(TargetPath)&quot; &quot;C:\Program Files (x86)\Steam\steamapps\common\Schedule I\Mods&quot;" />
