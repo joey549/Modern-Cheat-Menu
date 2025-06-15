@@ -1,8 +1,6 @@
 # Modern Cheat Menu
 
-**Version**: 2.1.0
-**Author**: darkness
-**Refactored by**: joey549 (SarkastikDemon)
+**Version**: 2.1.0 | **Author**: darkness | **Refactored by**: joey549 (SarkastikDemon)
 **Target Game**: Schedule I (by TVGS)  
 **Mod Loader**: MelonLoader  
 **Frameworks**: UniverseLib, Il2CppInterop, Harmony
