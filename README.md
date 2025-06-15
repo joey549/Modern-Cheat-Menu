@@ -1,7 +1,8 @@
 # Modern Cheat Menu
 
-**Version**: 2.0.2  
-**Author**: darkness  
+**Version**: 2.1.0
+**Author**: darkness
+**Refactored by**: joey549 (SarkastikDemon)
 **Target Game**: Schedule I (by TVGS)  
 **Mod Loader**: MelonLoader  
 **Frameworks**: UniverseLib, Il2CppInterop, Harmony
@@ -24,12 +25,20 @@ This mod is **open-source**, built to be both powerful and extendable.
 - 💥 Explosions at crosshair (Keybind: `Left Alt`)
 - 📦 Item management (spawn, unlock, quality settings)
 - 🚗 Vehicle spawning and teleportation
+- 👥 Adding employees
 - 🧠 Quest manipulation and emotion setting
 - 🔐 Relationship and employee system hooks
 - 📜 JSON and Il2Cpp-based internal data handling
 - 🧩 UniverseLib support for runtime UI
 
 > Designed for modders and developers looking to dive deep into the mechanics of Schedule I.
+
+---
+
+## 🐛 Know Bugs
+- ☰ When quiting to main menu and then loading in to game again, the menu will loose it's background but menu still functions.
+- 
+---
 
 ---
 
@@ -70,14 +79,9 @@ Player-based commands (like targeted exploits) are visible in the player list an
 ## 📚 Future Roadmap
 
 Planned command implementations:
-- `packageproduct`
-- `spawnvehicle`
-- `teleport`
-- `setowned`
 - `setqueststate`
 - `setemotion`
 - `setrelationship`
-- `addemployee`
 - `setdiscovered`
 - `setunlocked`
 
