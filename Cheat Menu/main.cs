@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Linq;
+using System.Threading;
 using Il2CppInterop.Runtime;
 using Il2CppInterop.Runtime.InteropTypes;
 using Il2CppInterop.Runtime.Runtime;
@@ -45,7 +46,8 @@ using UnityEngine.Playables;
 using UnityEngine.UI;
 using Il2CppFluffyUnderware.Curvy.Generator;
 using Il2CppScheduleOne.DevUtilities;
-
+using Il2CppFishNet.Component;
+using Il2CppFishNet.Managing;
 /*
  * ---------- Commands To Implement ----------
  * setowned, setqueststate, setquestentrystate, setemotion, setunlocked, setrelationship, addemployee
@@ -249,290 +251,6 @@ namespace Modern_Cheat_Menu
             public List<Command> Commands { get; set; } = new List<Command>();
         }
 
-        private void DrawPlayerExploitsUI(CommandCategory category)
-        {
-            try
-            {
-                float windowWidth = _windowRect.width - 40f;
-                float windowHeight = _windowRect.height - 150f;
-
-                // Player list panel at the top
-                float playerPanelHeight = 120f; // Fixed height for player panel
-
-                // Draw player list at the top
-                Rect playerListRect = new Rect(20, 100, windowWidth, playerPanelHeight);
-                GUI.Box(playerListRect, "", _panelStyle);
-
-                // Player list header
-                GUI.Label(
-                    new Rect(playerListRect.x + 10, playerListRect.y + 10, 150, 20),
-                    "Players Online",
-                    _commandLabelStyle ?? _labelStyle
-                );
-
-                // Draw player entries in a horizontal layout
-                DrawPlayerListHorizontal(playerListRect);
-
-                // Commands section below player list
-                _scrollPosition = GUI.BeginScrollView(
-                    new Rect(20, 100 + playerPanelHeight + 10, windowWidth, windowHeight - playerPanelHeight - 10),
-                    _scrollPosition,
-                    new Rect(0, 0, windowWidth - 20, category.Commands.Count * 100f)
-                );
-
-                float yOffset = 0f;
-
-                // Draw the standard commands
-                foreach (var command in category.Commands)
-                {
-                    // Command container rectangle
-                    Rect commandRect = new Rect(0, yOffset, windowWidth - 40f, 90f);
-                    GUI.Box(commandRect, "", _panelStyle);
-
-                    // Command Name
-                    GUI.Label(
-                        new Rect(commandRect.x + 10f, commandRect.y + 5f, 200f, 25f),
-                        command.Name,
-                        _commandLabelStyle ?? _labelStyle
-                    );
-
-                    // Parameters handling
-                    float paramX = commandRect.x + 220f;
-                    if (command.Parameters.Count > 0)
-                    {
-                        foreach (var param in command.Parameters)
-                        {
-                            Rect paramRect = new Rect(paramX, commandRect.y + 5f, 120f, 25f);
-
-                            if (param.Type == ParameterType.Input)
-                            {
-                                // Unique key for each parameter
-                                string paramKey = $"param_{command.Name}_{param.Name}";
-
-                                // Custom text field
-                                if (!_textFields.TryGetValue(paramKey, out var textField))
-                                {
-                                    textField = new CustomTextField(param.Value ?? "", _inputFieldStyle ?? GUI.skin.textField);
-                                    _textFields[paramKey] = textField;
-                                }
-
-                                param.Value = textField.Draw(paramRect);
-                            }
-                            else if (param.Type == ParameterType.Dropdown)
-                            {
-                                // Dropdown-like button
-                                if (GUI.Button(paramRect, param.Value ?? "Select", _buttonStyle))
-                                {
-                                    ShowDropdownMenu(param);
-                                }
-                            }
-
-                            paramX += 130f;
-                        }
-                    }
-
-                    // Execute Button
-                    Rect executeRect = new Rect(paramX, commandRect.y + 5f, 120f, 25f);
-                    if (GUI.Button(executeRect, "Execute", _buttonStyle))
-                    {
-                        ExecuteCommand(command);
-                    }
-
-                    // Optional description
-                    if (!string.IsNullOrEmpty(command.Description))
-                    {
-                        GUI.Label(
-                            new Rect(commandRect.x + 10f, commandRect.y + 35f, windowWidth - 60f, 50f),
-                            command.Description,
-                            _tooltipStyle ?? GUI.skin.label
-                        );
-                    }
-
-                    // Increment Y offset for next command
-                    yOffset += 100f;
-                }
-
-                GUI.EndScrollView();
-            }
-            catch (System.Exception ex)
-            {
-                LoggerInstance.Error($"Error in DrawPlayerExploitsUI: {ex}");
-            }
-        }
-
-        private void DrawPlayerListHorizontal(Rect containerRect)
-        {
-            try
-            {
-                var playerList = Il2CppScheduleOne.PlayerScripts.Player.PlayerList;
-                if (playerList == null || playerList.Count == 0)
-                {
-                    GUI.Label(
-                        new Rect(containerRect.x + 10, containerRect.y + 30, 200, 25),
-                        "No players found",
-                        _labelStyle
-                    );
-                    return;
-                }
-
-                float contentY = containerRect.y + 40;
-
-                foreach (var player in playerList)
-                {
-                    if (player == null) continue;
-
-                    bool isLocal = IsLocalPlayer(player);
-                    var playerHealth = GetPlayerHealth(player);
-
-                    // Basic player card
-                    Rect playerRect = new Rect(
-                        containerRect.x + 10,
-                        contentY,
-                        containerRect.width - 20,
-                        85
-                    );
-
-                    // Player card background - solid black for better contrast
-                    GUI.color = new Color(0.1f, 0.1f, 0.15f, 1.0f);
-                    GUI.DrawTexture(playerRect, Texture2D.whiteTexture);
-                    GUI.color = Color.white;
-
-                    // Player name
-                    GUIStyle nameStyle = new GUIStyle(GUI.skin.label);
-                    nameStyle.fontSize = 18;
-                    nameStyle.fontStyle = FontStyle.Bold;
-                    nameStyle.normal.textColor = isLocal ? Color.cyan : Color.white;
-
-                    GUI.Label(
-                        new Rect(playerRect.x + 10, playerRect.y + 5, playerRect.width - 20, 25),
-                        $"{player.name}{(isLocal ? " (YOU)" : "")}",
-                        nameStyle
-                    );
-
-                    // ALIVE status on right side of name
-                    if (playerHealth != null)
-                    {
-                        bool isAlive = playerHealth.IsAlive;
-
-                        GUIStyle statusStyle = new GUIStyle(GUI.skin.label);
-                        statusStyle.fontSize = 16;
-                        statusStyle.fontStyle = FontStyle.Bold;
-                        statusStyle.normal.textColor = isAlive ? Color.green : Color.red;
-                        statusStyle.alignment = TextAnchor.MiddleRight;
-
-                        GUI.Label(
-                            new Rect(playerRect.x + playerRect.width - 90, playerRect.y + 5, 80, 25),
-                            isAlive ? "ALIVE" : "DEAD",
-                            statusStyle
-                        );
-                    }
-
-                    // Health display
-                    if (playerHealth != null)
-                    {
-                        GUIStyle healthStyle = new GUIStyle(_labelStyle);
-                        healthStyle.fontSize = 16;
-
-                        // Only show the "Health:" label
-                        GUI.Label(
-                            new Rect(playerRect.x + 10, playerRect.y + 35, 50, 20),
-                            "Health:",
-                            healthStyle
-                        );
-
-                        // Make the health bar bigger and more prominent
-                        Rect healthBarRect = new Rect(playerRect.x + 70, playerRect.y + 35, playerRect.width - 90, 20);
-                        GUI.Box(healthBarRect, "", GUI.skin.box);
-
-                        // Calculate percentage based on integer values to avoid any decimal issues
-                        float healthPercent = (int)playerHealth.CurrentHealth / (float)(int)PlayerHealth.MAX_HEALTH;
-                        Rect fillRect = new Rect(
-                            healthBarRect.x + 2,
-                            healthBarRect.y + 2,
-                            (healthBarRect.width - 4) * healthPercent,
-                            healthBarRect.height - 4
-                        );
-
-                        // Better color gradient from red to green
-                        Color healthColor = Color.Lerp(Color.red, Color.green, healthPercent);
-                        GUI.color = healthColor;
-                        GUI.DrawTexture(fillRect, Texture2D.whiteTexture);
-                        GUI.color = Color.white;
-                    }
-
-                    // SteamID at bottom
-                    var playerInfo = _onlinePlayers.FirstOrDefault(p => p.Player == player);
-                    if (playerInfo != null)
-                    {
-                        GUIStyle idStyle = new GUIStyle(GUI.skin.label);
-                        idStyle.fontSize = 16;
-                        idStyle.normal.textColor = new Color(0.7f, 0.7f, 0.7f);
-
-                        GUI.Label(
-                            new Rect(playerRect.x + 10, playerRect.y + 60, 300, 20),
-                            playerInfo.SteamID,
-                            idStyle
-                        );
-
-                        // Explode Loop Toggle
-                        if (!isLocal)
-                        {
-                            Rect toggleRect = new Rect(playerRect.x + playerRect.width - 110, playerRect.y + 60, 100, 20);
-
-                            // Custom toggle style with white text for better visibility
-                            GUIStyle toggleStyle = new GUIStyle(GUI.skin.toggle);
-                            toggleStyle.normal.textColor = Color.white;
-                            toggleStyle.onNormal.textColor = Color.white;
-
-                            bool newState = GUI.Toggle(
-                                toggleRect,
-                                playerInfo.ExplodeLoop,
-                                "Explode Loop",
-                                toggleStyle
-                            );
-
-                            if (newState != playerInfo.ExplodeLoop)
-                            {
-                                playerInfo.ExplodeLoop = newState;
-                                if (newState)
-                                    StartExplodeLoop(playerInfo);
-                                else
-                                    StopExplodeLoop(playerInfo);
-                            }
-                        }
-                    }
-
-                    contentY += 95; // Space between cards
-                }
-
-                // Global Explode Loop All button
-                Rect explodeLoopAllRect = new Rect(
-                    containerRect.x + 10,
-                    contentY + 10,
-                    containerRect.width - 20,
-                    30
-                );
-
-                if (GUI.Button(explodeLoopAllRect, "Explode Loop All", _buttonStyle))
-                {
-                    foreach (var playerInfo in _onlinePlayers)
-                    {
-                        if (!playerInfo.IsLocal)
-                        {
-                            playerInfo.ExplodeLoop = true;
-                            StartExplodeLoop(playerInfo);
-                        }
-                    }
-                    ShowNotification("Players", "Started explosion loop on all players", NotificationType.Warning);
-                }
-            }
-            catch (Exception ex)
-            {
-                LoggerInstance.Error($"Error drawing horizontal player list: {ex.Message}");
-            }
-        }
-
-
         // UI settings
         private bool _uiVisible = false;
         private Rect _windowRect = new Rect(20, 20, 900, 650);
@@ -547,6 +265,8 @@ namespace Modern_Cheat_Menu
         private bool _stylesInitialized = false;
         private bool _needsTextureRecreation = false;
         private bool _needsStyleRecreation = false;
+        private MelonPreferences_Entry<float> _menuPosXEntry;
+        private MelonPreferences_Entry<float> _menuPosYEntry;
 
         // Animation timers
         private float _menuAnimationTime = 0f;
@@ -582,7 +302,6 @@ namespace Modern_Cheat_Menu
 
         // Free camera settings
         private bool _freeCamEnabled = false;
-        private Camera _mainCamera;
 
         // IMGUI Styling
         private GUISkin _customSkin;
@@ -665,7 +384,6 @@ namespace Modern_Cheat_Menu
         private bool _enableGlow = true;
         private bool _darkTheme = true;
         private float _uiOpacity = 0.95f;
-
 
         // Notification system
         private Queue<Notification> _notifications = new Queue<Notification>();
@@ -832,10 +550,10 @@ namespace Modern_Cheat_Menu
                 // Cache game items
                 CacheGameItems();
 
-                _isInitialized = true;
-
                 // Subscribe to player death event - add this line
                 SubscribeToPlayerDeathEvent();
+
+                _isInitialized = true;
 
                 // Show notification
                 ShowNotification($"{ModInfo.Name} Loaded", $"Press {CurrentMenuToggleKey} to toggle menu visibility", NotificationType.Success);
@@ -847,39 +565,6 @@ namespace Modern_Cheat_Menu
                 ShowNotification("Initialization Failed", ex.Message, NotificationType.Error);
             }
         }
-
-        //private IEnumerator SetupUI()
-        //{
-        //    yield return new WaitForSeconds(1f);
-
-        //    try
-        //    {
-        //        // Find main camera first
-        //        _mainCamera = Camera.main;
-        //        if (_mainCamera == null)
-        //            throw new NullReferenceException("Main camera not found!");
-
-        //        // Create textures (still safe to do here)
-        //        CreateTextures();
-
-        //        // Create button textures
-        //        CreateButtonTextures();
-
-        //        // Cache game items
-        //        CacheGameItems();
-
-        //        _isInitialized = true;
-
-        //        // Show notification
-        //        ShowNotification($"{ModInfo.Name} Loaded", $"Press {CurrentMenuToggleKey} to toggle menu visibility", NotificationType.Success);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        LoggerInstance.Error($"UI SETUP FAILED: {ex}");
-        //        _isInitialized = false;
-        //        ShowNotification("Initialization Failed", ex.Message, NotificationType.Error);
-        //    }
-        //}
 
         #region Textures and Styles
         private void CreateTextures()
@@ -1161,6 +846,8 @@ namespace Modern_Cheat_Menu
                 _enableGlowEntry = _settingsCategory.CreateEntry("EnableGlow", true, "Enable Glow Effects", "Toggle glow effects in the cheat menu");
                 _enableBlurEntry = _settingsCategory.CreateEntry("EnableBlur", true, "Enable Background Blur", "Toggle background blur in the cheat menu");
                 _darkThemeEntry = _settingsCategory.CreateEntry("DarkTheme", true, "Dark Theme", "Use dark theme for the cheat menu");
+                _menuPosXEntry = _settingsCategory.CreateEntry("MenuPosX", 20f, is_hidden: true);
+                _menuPosYEntry = _settingsCategory.CreateEntry("MenuPosY", 20f, is_hidden: true);
 
                 // Load all settings
                 LoadSettings();
@@ -1186,9 +873,33 @@ namespace Modern_Cheat_Menu
                 _enableBlur = _enableBlurEntry.Value;
                 _darkTheme = _darkThemeEntry.Value;
 
-                // Load keybinds (already implemented in UpdateKeybinds method)
-                UpdateKeybinds();
+                // Load window position - ADD THIS
+                if (_menuPosXEntry != null && _menuPosYEntry != null)
+                {
+                    LoggerInstance.Msg($"Loading saved window position: X={_menuPosXEntry.Value}, Y={_menuPosYEntry.Value}");
+                    _windowRect.x = _menuPosXEntry.Value;
+                    _windowRect.y = _menuPosYEntry.Value;
+                }
+                else
+                {
+                    LoggerInstance.Error("Menu position entries are null! Cannot load position.");
+                }
 
+                // Apply screen bounds checking
+                if (_windowRect.x < 0 || _windowRect.x > Screen.width - 100 || _windowRect.y < 0 || _windowRect.y > Screen.height - 100)
+                {
+                    // Log detailed debug information
+                    LoggerInstance.Error($"Menu position out of bounds! Debug info:");
+                    LoggerInstance.Error($"Screen resolution: {Screen.width}x{Screen.height}, DPI: {Screen.dpi}");
+                    LoggerInstance.Error($"Saved position: X={_windowRect.x}, Y={_windowRect.y}, Width={_windowRect.width}, Height={_windowRect.height}");
+
+                    // Reset to default (center of screen)
+                    _windowRect.x = (Screen.width - _windowRect.width) / 2;
+                    _windowRect.y = (Screen.height - _windowRect.height) / 2;
+
+                    LoggerInstance.Msg($"Repositioned menu to center: X={_windowRect.x}, Y={_windowRect.y}");
+                }
+                UpdateKeybinds();
             }
             catch (Exception ex)
             {
@@ -1211,6 +922,12 @@ namespace Modern_Cheat_Menu
                 // Save all categories
                 _settingsCategory.SaveToFile();
                 _keybindCategory.SaveToFile();
+
+                if (_menuPosXEntry != null && _menuPosYEntry != null)
+                {
+                    _menuPosXEntry.Value = _windowRect.x;
+                    _menuPosYEntry.Value = _windowRect.y;
+                }
 
                 ShowNotification("Settings", "Settings saved successfully", NotificationType.Success);
             }
@@ -2650,8 +2367,6 @@ namespace Modern_Cheat_Menu
                 }
 
                 Vector3 myPosition = localPlayer.transform.position;
-
-                // Count teleported players
                 int teleportCount = 0;
 
                 foreach (var playerInfo in _onlinePlayers)
@@ -2659,15 +2374,71 @@ namespace Modern_Cheat_Menu
                     if (playerInfo == null || playerInfo.Player == null || playerInfo.IsLocal)
                         continue;
 
-                    // Teleport remote player to slightly offset position
-                    Vector3 offset = new Vector3(
-                        UnityEngine.Random.Range(-1.5f, 1.5f),
-                        0,
-                        UnityEngine.Random.Range(-1.5f, 1.5f)
-                    );
+                    try
+                    {
 
-                    playerInfo.Player.transform.position = myPosition + offset;
-                    teleportCount++;
+                        // Method 1: Try using SetTransform component
+                        var setTransform = playerInfo.Player.GetComponent<Il2CppScheduleOne.DevUtilities.SetTransform>();
+                        if (setTransform == null)
+                        {
+                            // Add the component if it doesn't exist
+                            setTransform = playerInfo.Player.gameObject.AddComponent<Il2CppScheduleOne.DevUtilities.SetTransform>();
+                        }
+
+                        if (setTransform != null)
+                        {
+                            // Slight random offset to avoid players stacking on top of each other
+                            Vector3 offset = new Vector3(
+                                UnityEngine.Random.Range(-1.5f, 1.5f),
+                                0,
+                                UnityEngine.Random.Range(-1.5f, 1.5f)
+                            );
+
+                            // Configure the SetTransform component
+                            setTransform.SetOnUpdate = true;
+                            setTransform.SetPosition = true;
+                            setTransform.LocalPosition = myPosition + offset;
+                            playerInfo.Player.Update();
+
+                            // Call Set to apply the transform immediately
+                            setTransform.Set();
+
+                            LoggerInstance.Msg($"Applied SetTransform to {playerInfo.Player.name}");
+                            teleportCount++;
+                        }
+                        else
+                        {
+                            // Fallback method: Try the PlayerMovement.Teleport method
+                            var playerMovement = playerInfo.Player.GetComponent<Il2CppScheduleOne.PlayerScripts.PlayerMovement>();
+                            if (playerMovement != null)
+                            {
+                                Vector3 offset = new Vector3(
+                                    UnityEngine.Random.Range(-1.5f, 1.5f),
+                                    0,
+                                    UnityEngine.Random.Range(-1.5f, 1.5f)
+                                );
+                                playerMovement.Teleport(myPosition + offset);
+                                LoggerInstance.Msg($"Used PlayerMovement.Teleport for {playerInfo.Player.name}");
+                                teleportCount++;
+                            }
+                            else
+                            {
+                                // Last resort: direct transform position modification
+                                Vector3 offset = new Vector3(
+                                    UnityEngine.Random.Range(-1.5f, 1.5f),
+                                    0,
+                                    UnityEngine.Random.Range(-1.5f, 1.5f)
+                                );
+                                playerInfo.Player.transform.position = myPosition + offset;
+                                LoggerInstance.Msg($"Used direct transform position for {playerInfo.Player.name}");
+                                teleportCount++;
+                            }
+                        }
+                    }
+                    catch (Exception playerEx)
+                    {
+                        LoggerInstance.Error($"Failed to teleport {playerInfo.Player.name}: {playerEx.Message}");
+                    }
                 }
 
                 if (teleportCount > 0)
@@ -2681,8 +2452,34 @@ namespace Modern_Cheat_Menu
             }
             catch (Exception ex)
             {
-                LoggerInstance.Error($"Error teleporting all players: {ex.Message}");
+                LoggerInstance.Error($"Error in TeleportAllPlayersToMe: {ex.Message}");
                 ShowNotification("Error", "Failed to teleport players", NotificationType.Error);
+            }
+        }
+
+        private void SaveWindowPosition()
+        {
+            try
+            {
+                if (_menuPosXEntry == null || _menuPosYEntry == null)
+                {
+                    LoggerInstance.Error("Menu position entries are null! Cannot save position.");
+                    return;
+                }
+
+                // Set the values
+                _menuPosXEntry.Value = _windowRect.x;
+                _menuPosYEntry.Value = _windowRect.y;
+
+                // Save to file
+                _settingsCategory.SaveToFile(false); // Pass false to prevent triggering the OnSaved event
+
+                LoggerInstance.Msg($"Window position saved: X={_windowRect.x}, Y={_windowRect.y}");
+            }
+            catch (Exception ex)
+            {
+                LoggerInstance.Error($"Failed to save window position: {ex.Message}");
+                LoggerInstance.Error($"Stack trace: {ex.StackTrace}");
             }
         }
 
@@ -2693,41 +2490,65 @@ namespace Modern_Cheat_Menu
                 // Make the drag area just the header section
                 Rect dragRect = new Rect(0, 0, _windowRect.width, 40);
 
-                // Check for mousedown event inside the drag area
-                if (Event.current.type == EventType.MouseDown &&
-                    Event.current.button == 0 &&
-                    dragRect.Contains(Event.current.mousePosition))
+                // Current event
+                Event current = Event.current;
+
+                // Start dragging
+                if (current.type == EventType.MouseDown &&
+                    current.button == 0 &&
+                    dragRect.Contains(current.mousePosition))
                 {
                     _isDragging = true;
-                    _dragOffset = new Vector2(
-                        Event.current.mousePosition.x - _windowRect.x,
-                        Event.current.mousePosition.y - _windowRect.y
-                    );
-                    Event.current.Use(); // Prevent this event from being processed further
+                    _dragOffset = current.mousePosition - new Vector2(_windowRect.x, _windowRect.y);
+                    current.Use();
                 }
-                // Handle dragging movement
-                else if (_isDragging && Event.current.type == EventType.MouseDrag)
+                // End dragging
+                else if (_isDragging && current.type == EventType.MouseUp)
                 {
-                    // Update window position based on mouse movement
-                    _windowRect.x = Event.current.mousePosition.x - _dragOffset.x;
-                    _windowRect.y = Event.current.mousePosition.y - _dragOffset.y;
+                    _isDragging = false;
 
-                    // Keep window fully on screen with some padding
+                    // Save position
+                    SaveWindowPosition();
+
+                    current.Use();
+                }
+                // Handle dragging - simplified approach
+                else if (_isDragging)
+                {
+                    // Update position regardless of event type while dragging is active
+                    // This provides smoother dragging by updating on every frame
+                    _windowRect.x = current.mousePosition.x - _dragOffset.x;
+                    _windowRect.y = current.mousePosition.y - _dragOffset.y;
+
+                    // Keep window on screen
                     _windowRect.x = Mathf.Clamp(_windowRect.x, 0, Screen.width - _windowRect.width);
                     _windowRect.y = Mathf.Clamp(_windowRect.y, 0, Screen.height - _windowRect.height);
 
-                    Event.current.Use(); // Prevent this event from being processed further
-                }
-                // Handle end of dragging
-                else if (Event.current.type == EventType.MouseUp && _isDragging)
-                {
-                    _isDragging = false;
-                    Event.current.Use(); // Prevent this event from being processed further
+                    // Force repaint
+                    GUI.changed = true;
+
+                    // Only consume the event for mouse movement
+                    if (current.type == EventType.MouseDrag)
+                    {
+                        current.Use();
+                    }
+
+                    // Check if mouse button is released outside normal events
+                    if (!Input.GetMouseButton(0))
+                    {
+                        _isDragging = false;
+
+                        // Save position when drag ends
+                        _menuPosXEntry.Value = _windowRect.x;
+                        _menuPosYEntry.Value = _windowRect.y;
+                        _settingsCategory.SaveToFile();
+                    }
                 }
             }
             catch (Exception ex)
             {
                 LoggerInstance.Error($"Window dragging error: {ex.Message}");
+                _isDragging = false;
             }
         }
 
@@ -2918,24 +2739,6 @@ namespace Modern_Cheat_Menu
             catch (Exception ex)
             {
                 LoggerInstance.Error($"Failed to subscribe to player death event: {ex.Message}");
-            }
-        }
-
-        private IEnumerator RecreateTexturesAfterDeath()
-        {
-            // Wait a short moment to ensure any cleanup from death has finished
-            yield return new WaitForSeconds(0.5f);
-
-            // Recreate textures and styles
-            if (_isInitialized)
-            {
-                CreateTextures();
-                InitializeStyles();
-
-                _needsTextureRecreation = false;
-                _needsStyleRecreation = false;
-
-                _stylesInitialized = true;
             }
         }
 
@@ -3454,6 +3257,9 @@ namespace Modern_Cheat_Menu
 
                 GUILayout.Space(15);
 
+
+
+
                 // Toggle settings
                 GUILayout.BeginHorizontal();
                 bool newAnimations = GUILayout.Toggle(_enableAnimations, "Enable Animations", GUILayout.Width(200));
@@ -3539,6 +3345,15 @@ namespace Modern_Cheat_Menu
 
                 GUILayout.Space(15);
 
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Generate Debug Info", _buttonStyle, GUILayout.Width(150)))
+                {
+                    GenerateDebugInfoCommand(null);
+                }
+                GUILayout.EndHorizontal();
+
+                GUILayout.Space(15);
+                
                 // Action buttons
                 GUILayout.BeginHorizontal();
                 if (GUILayout.Button("Save Settings", _buttonStyle, GUILayout.Width(150)))
@@ -4530,7 +4345,7 @@ namespace Modern_Cheat_Menu
                     // Patch network methods to block damage for local player only
                     PatchImpactNetworkMethods();
 
-                    // Start the comprehensive godmode coroutine
+                    // Start the godmode coroutine
                     if (_godModeCoroutine == null)
                     {
                         _godModeCoroutine = MelonCoroutines.Start(GodModeRoutine());
@@ -5384,7 +5199,7 @@ namespace Modern_Cheat_Menu
                 }
 
                 // Wait slightly longer to reduce performance impact
-                yield return new WaitForSeconds(0.3f);
+                yield return new WaitForSeconds(0.5f);
             }
         }
 
@@ -5764,6 +5579,292 @@ namespace Modern_Cheat_Menu
 
         #endregion
 
+        #region UI Functions
+        private void DrawPlayerExploitsUI(CommandCategory category)
+        {
+            try
+            {
+                float windowWidth = _windowRect.width - 40f;
+                float windowHeight = _windowRect.height - 150f;
+
+                // Player list panel at the top
+                float playerPanelHeight = 120f; // Fixed height for player panel
+
+                // Draw player list at the top
+                Rect playerListRect = new Rect(20, 100, windowWidth, playerPanelHeight);
+                GUI.Box(playerListRect, "", _panelStyle);
+
+                // Player list header
+                GUI.Label(
+                    new Rect(playerListRect.x + 10, playerListRect.y + 10, 150, 20),
+                    "Players Online",
+                    _commandLabelStyle ?? _labelStyle
+                );
+
+                // Draw player entries in a horizontal layout
+                DrawPlayerListHorizontal(playerListRect);
+
+                // Commands section below player list
+                _scrollPosition = GUI.BeginScrollView(
+                    new Rect(20, 100 + playerPanelHeight + 10, windowWidth, windowHeight - playerPanelHeight - 10),
+                    _scrollPosition,
+                    new Rect(0, 0, windowWidth - 20, category.Commands.Count * 100f)
+                );
+
+                float yOffset = 0f;
+
+                // Draw the standard commands
+                foreach (var command in category.Commands)
+                {
+                    // Command container rectangle
+                    Rect commandRect = new Rect(0, yOffset, windowWidth - 40f, 90f);
+                    GUI.Box(commandRect, "", _panelStyle);
+
+                    // Command Name
+                    GUI.Label(
+                        new Rect(commandRect.x + 10f, commandRect.y + 5f, 200f, 25f),
+                        command.Name,
+                        _commandLabelStyle ?? _labelStyle
+                    );
+
+                    // Parameters handling
+                    float paramX = commandRect.x + 220f;
+                    if (command.Parameters.Count > 0)
+                    {
+                        foreach (var param in command.Parameters)
+                        {
+                            Rect paramRect = new Rect(paramX, commandRect.y + 5f, 120f, 25f);
+
+                            if (param.Type == ParameterType.Input)
+                            {
+                                // Unique key for each parameter
+                                string paramKey = $"param_{command.Name}_{param.Name}";
+
+                                // Custom text field
+                                if (!_textFields.TryGetValue(paramKey, out var textField))
+                                {
+                                    textField = new CustomTextField(param.Value ?? "", _inputFieldStyle ?? GUI.skin.textField);
+                                    _textFields[paramKey] = textField;
+                                }
+
+                                param.Value = textField.Draw(paramRect);
+                            }
+                            else if (param.Type == ParameterType.Dropdown)
+                            {
+                                // Dropdown-like button
+                                if (GUI.Button(paramRect, param.Value ?? "Select", _buttonStyle))
+                                {
+                                    ShowDropdownMenu(param);
+                                }
+                            }
+
+                            paramX += 130f;
+                        }
+                    }
+
+                    // Execute Button
+                    Rect executeRect = new Rect(paramX, commandRect.y + 5f, 120f, 25f);
+                    if (GUI.Button(executeRect, "Execute", _buttonStyle))
+                    {
+                        ExecuteCommand(command);
+                    }
+
+                    // Optional description
+                    if (!string.IsNullOrEmpty(command.Description))
+                    {
+                        GUI.Label(
+                            new Rect(commandRect.x + 10f, commandRect.y + 35f, windowWidth - 60f, 50f),
+                            command.Description,
+                            _tooltipStyle ?? GUI.skin.label
+                        );
+                    }
+
+                    // Increment Y offset for next command
+                    yOffset += 100f;
+                }
+
+                GUI.EndScrollView();
+            }
+            catch (System.Exception ex)
+            {
+                LoggerInstance.Error($"Error in DrawPlayerExploitsUI: {ex}");
+            }
+        }
+
+        private void DrawPlayerListHorizontal(Rect containerRect)
+        {
+            try
+            {
+                var playerList = Il2CppScheduleOne.PlayerScripts.Player.PlayerList;
+                if (playerList == null || playerList.Count == 0)
+                {
+                    GUI.Label(
+                        new Rect(containerRect.x + 10, containerRect.y + 30, 200, 25),
+                        "No players found",
+                        _labelStyle
+                    );
+                    return;
+                }
+
+                float contentY = containerRect.y + 40;
+
+                foreach (var player in playerList)
+                {
+                    if (player == null) continue;
+
+                    bool isLocal = IsLocalPlayer(player);
+                    var playerHealth = GetPlayerHealth(player);
+
+                    // Basic player card
+                    Rect playerRect = new Rect(
+                        containerRect.x + 10,
+                        contentY,
+                        containerRect.width - 20,
+                        85
+                    );
+
+                    // Player card background - solid black for better contrast
+                    GUI.color = new Color(0.1f, 0.1f, 0.15f, 1.0f);
+                    GUI.DrawTexture(playerRect, Texture2D.whiteTexture);
+                    GUI.color = Color.white;
+
+                    // Player name
+                    GUIStyle nameStyle = new GUIStyle(GUI.skin.label);
+                    nameStyle.fontSize = 18;
+                    nameStyle.fontStyle = FontStyle.Bold;
+                    nameStyle.normal.textColor = isLocal ? Color.cyan : Color.white;
+
+                    GUI.Label(
+                        new Rect(playerRect.x + 10, playerRect.y + 5, playerRect.width - 20, 25),
+                        $"{player.name}{(isLocal ? " (YOU)" : "")}",
+                        nameStyle
+                    );
+
+                    // ALIVE status on right side of name
+                    if (playerHealth != null)
+                    {
+                        bool isAlive = playerHealth.IsAlive;
+
+                        GUIStyle statusStyle = new GUIStyle(GUI.skin.label);
+                        statusStyle.fontSize = 16;
+                        statusStyle.fontStyle = FontStyle.Bold;
+                        statusStyle.normal.textColor = isAlive ? Color.green : Color.red;
+                        statusStyle.alignment = TextAnchor.MiddleRight;
+
+                        GUI.Label(
+                            new Rect(playerRect.x + playerRect.width - 90, playerRect.y + 5, 80, 25),
+                            isAlive ? "ALIVE" : "DEAD",
+                            statusStyle
+                        );
+                    }
+
+                    // Health display
+                    if (playerHealth != null)
+                    {
+                        GUIStyle healthStyle = new GUIStyle(_labelStyle);
+                        healthStyle.fontSize = 16;
+
+                        // Only show the "Health:" label
+                        GUI.Label(
+                            new Rect(playerRect.x + 10, playerRect.y + 35, 50, 20),
+                            "Health:",
+                            healthStyle
+                        );
+
+                        // Make the health bar bigger and more prominent
+                        Rect healthBarRect = new Rect(playerRect.x + 70, playerRect.y + 35, playerRect.width - 90, 20);
+                        GUI.Box(healthBarRect, "", GUI.skin.box);
+
+                        // Calculate percentage based on integer values to avoid any decimal issues
+                        float healthPercent = (int)playerHealth.CurrentHealth / (float)(int)PlayerHealth.MAX_HEALTH;
+                        Rect fillRect = new Rect(
+                            healthBarRect.x + 2,
+                            healthBarRect.y + 2,
+                            (healthBarRect.width - 4) * healthPercent,
+                            healthBarRect.height - 4
+                        );
+
+                        // Better color gradient from red to green
+                        Color healthColor = Color.Lerp(Color.red, Color.green, healthPercent);
+                        GUI.color = healthColor;
+                        GUI.DrawTexture(fillRect, Texture2D.whiteTexture);
+                        GUI.color = Color.white;
+                    }
+
+                    // SteamID at bottom
+                    var playerInfo = _onlinePlayers.FirstOrDefault(p => p.Player == player);
+                    if (playerInfo != null)
+                    {
+                        GUIStyle idStyle = new GUIStyle(GUI.skin.label);
+                        idStyle.fontSize = 16;
+                        idStyle.normal.textColor = new Color(0.7f, 0.7f, 0.7f);
+
+                        GUI.Label(
+                            new Rect(playerRect.x + 10, playerRect.y + 60, 300, 20),
+                            playerInfo.SteamID,
+                            idStyle
+                        );
+
+                        // Explode Loop Toggle
+                        if (!isLocal)
+                        {
+                            Rect toggleRect = new Rect(playerRect.x + playerRect.width - 110, playerRect.y + 60, 100, 20);
+
+                            // Custom toggle style with white text for better visibility
+                            GUIStyle toggleStyle = new GUIStyle(GUI.skin.toggle);
+                            toggleStyle.normal.textColor = Color.white;
+                            toggleStyle.onNormal.textColor = Color.white;
+
+                            bool newState = GUI.Toggle(
+                                toggleRect,
+                                playerInfo.ExplodeLoop,
+                                "Explode Loop",
+                                toggleStyle
+                            );
+
+                            if (newState != playerInfo.ExplodeLoop)
+                            {
+                                playerInfo.ExplodeLoop = newState;
+                                if (newState)
+                                    StartExplodeLoop(playerInfo);
+                                else
+                                    StopExplodeLoop(playerInfo);
+                            }
+                        }
+                    }
+
+                    contentY += 95; // Space between cards
+                }
+
+                // Global Explode Loop All button
+                Rect explodeLoopAllRect = new Rect(
+                    containerRect.x + 10,
+                    contentY + 10,
+                    containerRect.width - 20,
+                    30
+                );
+
+                if (GUI.Button(explodeLoopAllRect, "Explode Loop All", _buttonStyle))
+                {
+                    foreach (var playerInfo in _onlinePlayers)
+                    {
+                        if (!playerInfo.IsLocal)
+                        {
+                            playerInfo.ExplodeLoop = true;
+                            StartExplodeLoop(playerInfo);
+                        }
+                    }
+                    ShowNotification("Players", "Started explosion loop on all players", NotificationType.Warning);
+                }
+            }
+            catch (Exception ex)
+            {
+                LoggerInstance.Error($"Error drawing horizontal player list: {ex.Message}");
+            }
+        }
+        #endregion
+
+
         #region Teleporter
         private GameObject mapTeleportObject;
         private Texture2D _mapTexture;
@@ -6034,6 +6135,321 @@ namespace Modern_Cheat_Menu
             return 3f; // Or some other safe default height for your game world
         }
 
+        private void TeleportTargetPlayer(Il2CppScheduleOne.PlayerScripts.Player targetPlayer, Vector3 position)
+        {
+            try
+            {
+                if (targetPlayer == null)
+                {
+                    LoggerInstance.Error("Target player is null!");
+                    ShowNotification("Error", "Target player not found", NotificationType.Error);
+                    return;
+                }
+
+                // Ensure position is valid
+                if (float.IsNaN(position.x) || float.IsNaN(position.y) || float.IsNaN(position.z) ||
+                    float.IsInfinity(position.x) || float.IsInfinity(position.y) || float.IsInfinity(position.z))
+                {
+                    LoggerInstance.Error("Invalid teleport position!");
+                    ShowNotification("Error", "Invalid teleport position", NotificationType.Error);
+                    return;
+                }
+
+                // Method 1: Try to get PlayerMovement from target player
+                var playerMovement = targetPlayer.GetComponent<Il2CppScheduleOne.PlayerScripts.PlayerMovement>();
+                if (playerMovement != null)
+                {
+                    // Direct call to the player's Teleport method
+                    LoggerInstance.Msg($"Teleporting {targetPlayer.name} using PlayerMovement.Teleport");
+                    playerMovement.Teleport(position);
+                    ShowNotification("Teleport", $"Teleported {targetPlayer.name} using movement teleport", NotificationType.Success);
+                    return;
+                }
+
+                // Method 2: Try to use teleport fields if available
+                try
+                {
+                    // Set player's teleport flag and position
+                    var teleportField = targetPlayer.GetType().GetField("teleport", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                    var teleportPosField = targetPlayer.GetType().GetField("teleportPosition", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+
+                    if (teleportField != null && teleportPosField != null)
+                    {
+                        // Set teleport flag to true
+                        teleportField.SetValue(targetPlayer, true);
+                        // Set teleport position
+                        teleportPosField.SetValue(targetPlayer, position);
+
+                        LoggerInstance.Msg($"Teleporting {targetPlayer.name} using teleport fields");
+                        ShowNotification("Teleport", $"Set teleport flag and position for {targetPlayer.name}", NotificationType.Success);
+                        return;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LoggerInstance.Error($"Error accessing teleport fields: {ex.Message}");
+                }
+
+                // Method 3: As a last resort, try to directly set transform position
+                LoggerInstance.Msg($"Fallback: Directly setting {targetPlayer.name}'s position");
+                targetPlayer.transform.position = position;
+
+                // Try to force position sync if possible
+                var netObj = targetPlayer.GetComponent<Il2CppFishNet.Object.NetworkObject>();
+                if (netObj != null)
+                {
+                    // Try to call any transform dirty method
+                    var dirtyTransformMethod = netObj.GetType().GetMethods()
+                        .FirstOrDefault(m => m.Name.Contains("Transform") && m.Name.Contains("Dirty"));
+
+                    if (dirtyTransformMethod != null)
+                    {
+                        dirtyTransformMethod.Invoke(netObj, null);
+                        LoggerInstance.Msg("Called transform dirty method");
+                    }
+                }
+
+                ShowNotification("Teleport", $"Direct position set for {targetPlayer.name}", NotificationType.Success);
+            }
+            catch (Exception ex)
+            {
+                LoggerInstance.Error($"Error teleporting target player: {ex.Message}");
+                ShowNotification("Error", "Teleport failed: " + ex.Message, NotificationType.Error);
+            }
+        }
+
+        private void GenerateDebugInfoCommand(string[] args)
+        {
+            try
+            {
+                StringBuilder debugInfo = new StringBuilder();
+                debugInfo.AppendLine("=== MODERN CHEAT MENU DEBUG INFORMATION ===");
+                debugInfo.AppendLine($"Generated: {DateTime.Now}");
+                debugInfo.AppendLine();
+
+                // System information
+                debugInfo.AppendLine("=== SYSTEM INFORMATION ===");
+                debugInfo.AppendLine($"OS: {SystemInfo.operatingSystem}");
+                debugInfo.AppendLine($"CPU: {SystemInfo.processorType} ({SystemInfo.processorCount} cores)");
+                debugInfo.AppendLine($"RAM: {SystemInfo.systemMemorySize} MB");
+                debugInfo.AppendLine($"GPU: {SystemInfo.graphicsDeviceName}");
+                debugInfo.AppendLine($"GPU API: {SystemInfo.graphicsDeviceType}");
+                debugInfo.AppendLine($"GPU Memory: {SystemInfo.graphicsMemorySize} MB");
+                debugInfo.AppendLine($"GPU Driver: {SystemInfo.graphicsDeviceVersion}");
+                debugInfo.AppendLine($"Screen Resolution: {Screen.currentResolution.width}x{Screen.currentResolution.height} @{Screen.currentResolution.refreshRate}Hz");
+                debugInfo.AppendLine($"Current DPI: {Screen.dpi}");
+                debugInfo.AppendLine($"Device Unique ID: {SystemInfo.deviceUniqueIdentifier}");
+                debugInfo.AppendLine($"Device Model: {SystemInfo.deviceModel}");
+                debugInfo.AppendLine($"HWID (Spoofed): {_generatedHwid}");
+                debugInfo.AppendLine();
+
+                // MelonLoader information
+                debugInfo.AppendLine("=== MELONLOADER INFORMATION ===");
+                try
+                {
+                    //debugInfo.AppendLine($"MelonLoader Version: {MelonLoader.BuildInfo.Version}");
+                    //debugInfo.AppendLine($"MelonLoader Hash: {MelonLoader.BuildInfo.Hash}");
+                    //debugInfo.AppendLine($"Game Assembly: {MelonLoader.BuildInfo.GameAssembly}");
+                    //debugInfo.AppendLine($"Is Game IL2CPP: {MelonLoader.InternalUtils.UnhollowerSupport.IsGameIl2Cpp()}");
+
+                    var melonAssembly = typeof(MelonLoader.MelonMod).Assembly;
+                    debugInfo.AppendLine($"MelonLoader Assembly: {melonAssembly.GetName().Name} v{melonAssembly.GetName().Version}");
+
+                    // List loaded mods
+                    var loadedMods = MelonLoader.MelonBase.RegisteredMelons;
+                    if (loadedMods != null && loadedMods.Count > 0)
+                    {
+                        debugInfo.AppendLine($"Loaded Mods ({loadedMods.Count}):");
+                        foreach (var mod in loadedMods)
+                        {
+                            debugInfo.AppendLine($"  - {mod.Info.Name} v{mod.Info.Version} by {mod.Info.Author}");
+                        }
+                    }
+                    else
+                    {
+                        debugInfo.AppendLine("No other mods loaded");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    debugInfo.AppendLine($"Error retrieving MelonLoader info: {ex.Message}");
+                }
+                debugInfo.AppendLine();
+
+                // Game information
+                debugInfo.AppendLine("=== GAME INFORMATION ===");
+                debugInfo.AppendLine($"Game Name: {Modern_Cheat_Menu.ModInfo.NameOfGame}");
+                debugInfo.AppendLine($"Game Developers: {Modern_Cheat_Menu.ModInfo.GameDevelopers}");
+                debugInfo.AppendLine($"Unity Version: {Application.unityVersion}");
+                debugInfo.AppendLine($"Game Version: {Application.version}");
+                debugInfo.AppendLine($"Game Data Path: {Application.dataPath}");
+                debugInfo.AppendLine($"Product Name: {Application.productName}");
+                debugInfo.AppendLine($"Company Name: {Application.companyName}");
+                debugInfo.AppendLine($"Target Frame Rate: {Application.targetFrameRate}");
+                debugInfo.AppendLine($"Is Focused: {Application.isFocused}");
+                debugInfo.AppendLine($"Is Playing: {Application.isPlaying}");
+                debugInfo.AppendLine($"Is Background: {Application.runInBackground}");
+                debugInfo.AppendLine($"Quality Level: {QualitySettings.GetQualityLevel()}");
+                debugInfo.AppendLine();
+
+                // Mod information
+                debugInfo.AppendLine("=== MOD INFORMATION ===");
+                debugInfo.AppendLine($"Menu Name: {Modern_Cheat_Menu.ModInfo.Name}");
+                debugInfo.AppendLine($"Menu Version: {Modern_Cheat_Menu.ModInfo.Version}");
+                debugInfo.AppendLine($"Author: {Modern_Cheat_Menu.ModInfo.Author}");
+                debugInfo.AppendLine($"Repository: {Modern_Cheat_Menu.ModInfo.RepositoryUrl}");
+                debugInfo.AppendLine($"UI Initialized: {_isInitialized}");
+                debugInfo.AppendLine($"UI Scale: {_uiScale}");
+                debugInfo.AppendLine($"UI Opacity: {_uiOpacity}");
+                debugInfo.AppendLine($"Animations Enabled: {_enableAnimations}");
+                debugInfo.AppendLine($"Window Position: X={_windowRect.x}, Y={_windowRect.y}, W={_windowRect.width}, H={_windowRect.height}");
+                debugInfo.AppendLine();
+
+                // Active features
+                debugInfo.AppendLine("=== FEATURE STATUS ===");
+                debugInfo.AppendLine($"Godmode: {_playerGodmodeEnabled}");
+                debugInfo.AppendLine($"Never Wanted: {_playerNeverWantedEnabled}");
+                debugInfo.AppendLine($"Free Camera: {_freeCamEnabled}");
+                debugInfo.AppendLine($"Unlimited Ammo: {_unlimitedAmmoEnabled}");
+                debugInfo.AppendLine($"Aimbot: {_aimbotEnabled}");
+                debugInfo.AppendLine($"Perfect Accuracy: {_perfectAccuracyEnabled}");
+                debugInfo.AppendLine($"No Recoil: {_noRecoilEnabled}");
+                debugInfo.AppendLine($"One Hit Kill: {_oneHitKillEnabled}");
+                debugInfo.AppendLine($"NPCs Pacified: {_npcsPacifiedEnabled}");
+                debugInfo.AppendLine($"Crosshair Always Visible: {_forceCrosshairAlwaysVisible}");
+                debugInfo.AppendLine();
+
+                // Current player information
+                var localPlayer = FindLocalPlayer();
+                if (localPlayer != null)
+                {
+                    debugInfo.AppendLine("=== PLAYER INFORMATION ===");
+                    debugInfo.AppendLine($"Player Name: {localPlayer.name}");
+                    debugInfo.AppendLine($"Position: X={localPlayer.transform.position.x:F2}, Y={localPlayer.transform.position.y:F2}, Z={localPlayer.transform.position.z:F2}");
+                    debugInfo.AppendLine($"Rotation: X={localPlayer.transform.rotation.eulerAngles.x:F2}, Y={localPlayer.transform.rotation.eulerAngles.y:F2}, Z={localPlayer.transform.rotation.eulerAngles.z:F2}");
+
+                    var playerHealth = GetPlayerHealth(localPlayer);
+                    if (playerHealth != null)
+                    {
+                        debugInfo.AppendLine($"Health: {playerHealth.CurrentHealth}/{PlayerHealth.MAX_HEALTH}");
+                        debugInfo.AppendLine($"Is Alive: {playerHealth.IsAlive}");
+                    }
+
+                    var playerMovement = localPlayer.GetComponent<Il2CppScheduleOne.PlayerScripts.PlayerMovement>();
+                    if (playerMovement != null)
+                    {
+                        debugInfo.AppendLine($"Movement Speed: {PlayerMovement.WalkSpeed}");
+                        debugInfo.AppendLine($"Sprint Multiplier: {PlayerMovement.SprintMultiplier}");
+                        debugInfo.AppendLine($"Jump Force: {playerMovement.jumpForce}");
+                        debugInfo.AppendLine($"Gravity Multiplier: {PlayerMovement.GravityMultiplier}");
+                        debugInfo.AppendLine($"Is Grounded: {playerMovement.IsGrounded}");
+                        debugInfo.AppendLine($"Is Crouched: {playerMovement.isCrouched}");
+                        debugInfo.AppendLine($"Is Sprinting: {playerMovement.isSprinting}");
+                        debugInfo.AppendLine($"Current Stamina: {playerMovement.CurrentStaminaReserve}");
+                    }
+
+                    // Network object info
+                    var netObj = localPlayer.GetComponent<Il2CppFishNet.Object.NetworkObject>();
+                    if (netObj != null)
+                    {
+                        debugInfo.AppendLine($"Network ID: {netObj.ObjectId}");
+                        debugInfo.AppendLine($"Owner ID: {netObj.OwnerId}");
+                        debugInfo.AppendLine($"Is Owner: {netObj.IsOwner}");
+                        debugInfo.AppendLine($"Is Server: {netObj.IsServer}");
+                        debugInfo.AppendLine($"Is Spawned: {netObj.IsSpawned}");
+                    }
+
+                    debugInfo.AppendLine();
+                }
+
+                // Online players
+                debugInfo.AppendLine("=== ONLINE INFORMATION ===");
+                var playerList = Il2CppScheduleOne.PlayerScripts.Player.PlayerList;
+                debugInfo.AppendLine($"Total Players: {(playerList != null ? playerList.Count : 0)}");
+                debugInfo.AppendLine($"Server Socket Found: {(_discoveredServerSocket != null)}");
+
+                // List all players
+                if (playerList != null && playerList.Count > 0)
+                {
+                    debugInfo.AppendLine("\nPlayer List:");
+                    foreach (var player in playerList)
+                    {
+                        if (player == null) continue;
+                        debugInfo.AppendLine($"- {player.name} (Local: {IsLocalPlayer(player)})");
+
+                        var netObj = player.GetComponent<Il2CppFishNet.Object.NetworkObject>();
+                        if (netObj != null)
+                        {
+                            debugInfo.AppendLine($"  Network ID: {netObj.ObjectId}, Owner ID: {netObj.OwnerId}");
+                        }
+                    }
+                }
+
+                // Server transport information
+                var transports = Resources.FindObjectsOfTypeAll<Il2CppFishySteamworks.FishySteamworks>();
+                if (transports != null && transports.Length > 0)
+                {
+                    var transport = transports[0];
+                    debugInfo.AppendLine("\nTransport Information:");
+                    debugInfo.AppendLine($"Transport Type: {transport.GetType().Name}");
+                    debugInfo.AppendLine($"Max Clients: {transport._maximumClients}");
+
+                    if (transport._server != null)
+                    {
+                        debugInfo.AppendLine($"Server Socket: {transport._server.GetType().Name}");
+                        debugInfo.AppendLine($"Server Max Clients: {transport._server._maximumClients}");
+
+                        try
+                        {
+                            if (transport._server._steamIds != null)
+                            {
+                                debugInfo.AppendLine($"Connected Steam IDs: {transport._server._steamIds.Count}");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            debugInfo.AppendLine($"Error accessing steam IDs: {ex.Message}");
+                        }
+                    }
+                }
+
+                // Cached items information
+                debugInfo.AppendLine("\n=== CACHE INFORMATION ===");
+                debugInfo.AppendLine($"Total Items: {_itemDictionary.Count}");
+                debugInfo.AppendLine($"Quality Items: {_qualitySupportCache.Count(kv => kv.Value)}");
+                debugInfo.AppendLine($"Vehicle Types: {_vehicleCache.Count}");
+
+                // Exception handling info
+                debugInfo.AppendLine("\n=== RUNTIME INFO ===");
+                debugInfo.AppendLine($"Current Culture: {System.Globalization.CultureInfo.CurrentCulture.Name}");
+                debugInfo.AppendLine($"Current UI Culture: {System.Globalization.CultureInfo.CurrentUICulture.Name}");
+                //debugInfo.AppendLine($"Thread Count: {System.Threading.Process.GetCurrentProcess().Threads.Count}");
+                debugInfo.AppendLine($"CLR Version: {System.Environment.Version}");
+                debugInfo.AppendLine($"Process Start Time: {System.Diagnostics.Process.GetCurrentProcess().StartTime}");
+                debugInfo.AppendLine($"Process Working Set: {System.Diagnostics.Process.GetCurrentProcess().WorkingSet64 / 1024 / 1024} MB");
+                debugInfo.AppendLine($"FPS: {1.0f / Time.deltaTime:F1}");
+                debugInfo.AppendLine($"Time.time: {Time.time:F1}");
+                debugInfo.AppendLine($"Time.unscaledTime: {Time.unscaledTime:F1}");
+                debugInfo.AppendLine($"Time.timeScale: {Time.timeScale:F2}");
+
+                // Save the debug information to a file in the game directory
+                string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                string filePath = Path.Combine(Application.dataPath, $"MCM_Debug_{timestamp}.txt");
+                File.WriteAllText(filePath, debugInfo.ToString());
+
+                // Also copy to clipboard for easy sharing
+                GUIUtility.systemCopyBuffer = debugInfo.ToString();
+
+                ShowNotification("Debug Info", $"Debug information generated and saved to:\n{filePath}\nAlso copied to clipboard!", NotificationType.Success);
+                LoggerInstance.Msg($"Debug information saved to: {filePath}");
+            }
+            catch (Exception ex)
+            {
+                LoggerInstance.Error($"Error generating debug information: {ex.Message}");
+                ShowNotification("Error", "Failed to generate debug information", NotificationType.Error);
+            }
+        }
+
         private void TeleportPlayer(Vector3 position)
         {
             try
@@ -6066,7 +6482,6 @@ namespace Modern_Cheat_Menu
             }
         }
 
-        //// Add this method to your OnInitializeMelon or SetupUI method
         private void DrawInteractiveMap(Rect mapRect)
         {
             try
