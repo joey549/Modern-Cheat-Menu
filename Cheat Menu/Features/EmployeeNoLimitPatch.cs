@@ -2,10 +2,12 @@
 using Il2CppInterop.Runtime.InteropTypes.Arrays;
 using Modern_Cheat_Menu.Library;
 using UnityEngine;
+using UnityEngine.UIElements;
+
+// * WIP * \\
 
 namespace Modern_Cheat_Menu.Patches
 {
-    [HarmonyPatch(typeof(Il2CppScheduleOne.Property.Property), nameof(Il2CppScheduleOne.Property.Property.SetOwned))] // just in-case
     [HarmonyPatch(typeof(Il2CppScheduleOne.Property.Property), nameof(Il2CppScheduleOne.Property.Property.Start))]
     public static class EmployeeNoLimitPatch
     {
@@ -15,16 +17,22 @@ namespace Modern_Cheat_Menu.Patches
             {
                 var current = __instance.EmployeeIdlePoints;
                 int oldLength = current?.Length ?? 0;
-                int targetLength = 50; // 50 is large enough... each property can have 50 employees
+                int targetLength = 50; // Set max employees (Has to create an idle point per each property)
 
                 Matrix4x4 propertyIdleMatrix = __instance.EmployeeContainer.transform.localToWorldMatrix;
 
-                Vector3 origin = propertyIdleMatrix.GetColumn(3); // mainPos
-                Vector3 right = propertyIdleMatrix.GetColumn(0).normalized;  // X
-                Vector3 up = propertyIdleMatrix.GetColumn(1).normalized;  // Y
-                Vector3 fwd = propertyIdleMatrix.GetColumn(2).normalized;  // Z
+                if (current == null || current.Count == 0)
+                {
+                    ModLogger.Warn($"[EmployeeIdleExpandOnLoadPatch] Skipped property '{__instance.name}' due to no existing idle points.");
+                    return;
+                }
 
-                float spacing = 0.5f; // needs adjusting
+                Vector3 origin = current[current.Count - 1].transform.position;
+                Vector3 right = Vector3.right;    // World +X
+                Vector3 forward = Vector3.forward; // World +Z
+
+                int columns = 5;
+                float spacing = 2f;
 
                 __instance.EmployeeCapacity = targetLength; // Force set all properties to max 50 employees first!
 
@@ -32,25 +40,29 @@ namespace Modern_Cheat_Menu.Patches
 
                 var expanded = new Il2CppReferenceArray<Transform>(targetLength);
 
-                // Copy existing
-                for (int i = 0; i < oldLength; i++)
+                int totalNew = targetLength - oldLength;
+                int totalRows = Mathf.CeilToInt((float)totalNew / columns);
+
+                for (int i = 0; i < oldLength; i++) // copy existing
                     expanded[i] = current[i];
+
+                Vector3 centeringOffset = -Vector3.right * ((columns - 5) * spacing / 2f) + Vector3.forward * ((totalRows - 5) * spacing / 2f);
 
                 for (int j = oldLength; j < targetLength; j++)
                 {
-                    int row = j / 5;
-                    int col = j % 5;
+                    int row = (j - oldLength) / columns;
+                    int col = (j - oldLength) % columns;
 
-                    Vector3 localOffset = (right * col + fwd * row) * spacing;
-                    Vector3 worldPos = origin + localOffset;
-                    
-                    GameObject go = new GameObject($"GameObject ({j})");
+                    Vector3 offset = (Vector3.right * col + Vector3.forward * row) * spacing;
+                    Vector3 worldPos = origin + offset + centeringOffset;
+
+                    GameObject go = new GameObject($"IdlePoint_{j}");
                     go.transform.position = worldPos;
                     expanded[j] = go.transform;
                 }
 
-                __instance.EmployeeIdlePoints = expanded; // New objects + existing
-                ModLogger.Info($"[EmployeeIdleExpandOnLoadPatch] Expanded IdlePoints from {oldLength} to {targetLength}.");
+                __instance.EmployeeIdlePoints = expanded;
+                ModLogger.Info($"[EmployeeIdleExpandOnLoadPatch] Expanded IdlePoints from {oldLength} to {targetLength} on property: {__instance.name}.");
             }
             catch (System.Exception ex)
             {

@@ -60,18 +60,10 @@ namespace Modern_Cheat_Menu.Commands
         }
 
         // To list by int
-        public static Il2CppSystem.Collections.Generic.List<string> ToCommandList(int value)
+        public static Il2CppSystem.Collections.Generic.List<string> ToCommandList<T>(T value)
         {
             var list = new Il2CppSystem.Collections.Generic.List<string>();
-            list.Add(value.ToString());
-            return list;
-        }
-
-        // To list by string
-        public static Il2CppSystem.Collections.Generic.List<string> ToCommandList(string value)
-        {
-            var list = new Il2CppSystem.Collections.Generic.List<string>();
-            list.Add(value);
+            list.Add(value?.ToString());
             return list;
         }
         public static void ExecuteCommand(CommandCore.Command command)

@@ -40,8 +40,7 @@ namespace Modern_Cheat_Menu.Features
             {
                 // Find the HUD.SetCrosshairVisible method
                 var hudType = typeof(Il2CppScheduleOne.UI.HUD);
-                var setCrosshairMethod = hudType.GetMethod("SetCrosshairVisible",
-                    BindingFlags.Public | BindingFlags.Instance);
+                var setCrosshairMethod = hudType.GetMethod("SetCrosshairVisible",BindingFlags.Public | BindingFlags.Instance);
 
                 if (setCrosshairMethod == null)
                 {
@@ -50,8 +49,7 @@ namespace Modern_Cheat_Menu.Features
                 }
 
                 // Create and apply the prefix patch
-                var patchMethod = typeof(Core).GetMethod("CrosshairVisibilityPatch",
-                    BindingFlags.Static | BindingFlags.NonPublic);
+                var patchMethod = typeof(Core).GetMethod("CrosshairVisibilityPatch",BindingFlags.Static | BindingFlags.NonPublic);
 
                 if (patchMethod == null)
                 {
@@ -74,8 +72,7 @@ namespace Modern_Cheat_Menu.Features
             {
                 // Find the HUD.SetCrosshairVisible method
                 var hudType = typeof(Il2CppScheduleOne.UI.HUD);
-                var setCrosshairMethod = hudType.GetMethod("SetCrosshairVisible",
-                    BindingFlags.Public | BindingFlags.Instance);
+                var setCrosshairMethod = hudType.GetMethod("SetCrosshairVisible",BindingFlags.Public | BindingFlags.Instance);
 
                 if (setCrosshairMethod == null)
                 {
@@ -97,9 +94,7 @@ namespace Modern_Cheat_Menu.Features
         {
             // If called with false, modify to true to keep crosshair visible
             if (!vis)
-            {
                 vis = true;
-            }
             // Return true to allow original method to run (with our modified parameter)
             return true;
         }

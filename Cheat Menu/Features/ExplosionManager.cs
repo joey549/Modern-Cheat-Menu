@@ -11,6 +11,8 @@ namespace Modern_Cheat_Menu.Features
 {
     public class ExplosionManager
     {
+        public static bool Enabled = false;
+
         #region Explosion exploiting
 
         // Explosion loop functionality
@@ -20,9 +22,7 @@ namespace Modern_Cheat_Menu.Features
         {
             string playerKey = playerInfo.Player.GetInstanceID().ToString();
             if (_explodeLoopCoroutines.ContainsKey(playerKey))
-            {
                 MelonCoroutines.Stop(_explodeLoopCoroutines[playerKey]);
-            }
 
             _explodeLoopCoroutines[playerKey] = MelonCoroutines.Start(ExplodeLoopRoutine(playerInfo));
         }
@@ -35,10 +35,8 @@ namespace Modern_Cheat_Menu.Features
 
                 // Stop the coroutine if it exists
                 if (_explodeLoopCoroutines.ContainsKey(playerKey))
-                {
                     MelonCoroutines.Stop(_explodeLoopCoroutines[playerKey]);
                     _explodeLoopCoroutines.Remove(playerKey);
-                }
 
                 // Reset explode loop state
                 playerInfo.ExplodeLoop = false;
@@ -57,8 +55,7 @@ namespace Modern_Cheat_Menu.Features
             {
                 try
                 {
-                    // Create explosion at player position
-                    Vector3 explosionPosition = playerInfo.Player.transform.position;
+                    Vector3 explosionPosition = playerInfo.Player.transform.position; // explosion at player
                     CreateServerSideExplosion(explosionPosition, 99999999999999f, 2f);
                 }
                 catch (Exception ex)
@@ -66,7 +63,6 @@ namespace Modern_Cheat_Menu.Features
                     ModLogger.Error($"Error in explosion loop: {ex.Message}");
                 }
 
-                // Wait before next explosion
                 yield return new WaitForSeconds(0.09f);
             }
             _explodeLoopCoroutines.Remove(playerKey);

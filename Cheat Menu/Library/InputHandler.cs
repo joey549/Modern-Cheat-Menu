@@ -9,44 +9,50 @@ namespace Modern_Cheat_Menu.Library
         {
             try
             {
-                // Make the drag area just the header section
-                Rect dragRect = new Rect(0, 0, UIs._windowRect.width, 40);
+                Event e = Event.current;
 
-                // Check for mousedown event inside the drag area
-                if (Event.current.type == EventType.MouseDown &&
-                    Event.current.button == 0 &&
-                    dragRect.Contains(Event.current.mousePosition))
-                {
-                    UIs._isDragging = true;
-                    UIs._dragOffset = new Vector2(
-                        Event.current.mousePosition.x - UIs._windowRect.x,
-                        Event.current.mousePosition.y - UIs._windowRect.y
-                    );
-                    Event.current.Use(); // Prevent this event from being processed further
-                }
-                // Handle dragging movement
-                else if (UIs._isDragging && Event.current.type == EventType.MouseDrag)
-                {
-                    // Update window position based on mouse movement
-                    UIs._windowRect.x = Event.current.mousePosition.x - UIs._dragOffset.x;
-                    UIs._windowRect.y = Event.current.mousePosition.y - UIs._dragOffset.y;
+                if (e == null || (e.type != EventType.MouseDown && e.type != EventType.MouseDrag && e.type != EventType.MouseUp))
+                    return;
 
-                    // Keep window fully on screen with some padding
-                    UIs._windowRect.x = Mathf.Clamp(UIs._windowRect.x, 0, Screen.width - UIs._windowRect.width);
-                    UIs._windowRect.y = Mathf.Clamp(UIs._windowRect.y, 0, Screen.height - UIs._windowRect.height);
+                Vector2 mousePos = GUIUtility.GUIToScreenPoint(e.mousePosition);
+                Rect dragRect = new Rect(UIs._windowRect.x, UIs._windowRect.y, UIs._windowRect.width, 40);
 
-                    Event.current.Use(); // Prevent this event from being processed further
-                }
-                // Handle end of dragging
-                else if (Event.current.type == EventType.MouseUp && UIs._isDragging)
+                switch (e.type)
                 {
-                    UIs._isDragging = false;
-                    Event.current.Use(); // Prevent this event from being processed further
+                    case EventType.MouseDown:
+                        if (e.button == 0 && dragRect.Contains(mousePos))
+                        {
+                            UIs._isDragging = true;
+                            UIs._dragOffset = mousePos - new Vector2(UIs._windowRect.x, UIs._windowRect.y);
+                            e.Use();
+                        }
+                        break;
+
+                    case EventType.MouseDrag:
+                        if (UIs._isDragging)
+                        {
+                            UIs._windowRect.position = mousePos - UIs._dragOffset;
+
+                            // Clamp to screen
+                            UIs._windowRect.x = Mathf.Clamp(UIs._windowRect.x, 0, Screen.width - UIs._windowRect.width);
+                            UIs._windowRect.y = Mathf.Clamp(UIs._windowRect.y, 0, Screen.height - UIs._windowRect.height);
+
+                            e.Use();
+                        }
+                        break;
+
+                    case EventType.MouseUp:
+                        if (UIs._isDragging)
+                        {
+                            UIs._isDragging = false;
+                            e.Use();
+                        }
+                        break;
                 }
             }
             catch (Exception ex)
             {
-                ModLogger.Error($"Window dragging error: {ex.Message}");
+                ModLogger.Error($"[Window Drag Error] {ex}");
             }
         }
     }

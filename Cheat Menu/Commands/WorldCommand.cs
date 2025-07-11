@@ -1,6 +1,12 @@
 ﻿using static Modern_Cheat_Menu.Core;
 using Modern_Cheat_Menu.Library;
+using Il2CppScheduleOne.GameTime;
 using UnityEngine;
+using Il2CppInterop.Runtime;
+using Il2CppScheduleOne.Equipping;
+using Modern_Cheat_Menu.Features;
+using Modern_Cheat_Menu.Patches;
+
 
 namespace Modern_Cheat_Menu.Commands
 {
@@ -10,9 +16,11 @@ namespace Modern_Cheat_Menu.Commands
         {
             try
             {
+                //TrashLimitSubPatch.allowTrashDestroyTemp = true;
                 var command = new Il2CppScheduleOne.Console.ClearTrash();
                 command.Execute(null);
                 Notifier.ShowNotification("World", "Cleared all trash", NotificationSystem.NotificationType.Success);
+                //TrashLimitSubPatch.allowTrashDestroyTemp = false;
             }
             catch (System.Exception ex)
             {
@@ -124,27 +132,16 @@ namespace Modern_Cheat_Menu.Commands
             {
                 ModStateS._freeCamEnabled = !ModStateS._freeCamEnabled;
 
-                // Close the menu.
                 ModSetting.ToggleUI(false);
 
-                // Toggle player camera
                 if (Il2CppScheduleOne.PlayerScripts.PlayerCamera.Instance != null)
-                {
                     Il2CppScheduleOne.PlayerScripts.PlayerCamera.Instance.SetCanLook(true);
-                }
 
-                // Toggle player movement
                 if (Il2CppScheduleOne.PlayerScripts.PlayerMovement.Instance != null)
-                {
                     Il2CppScheduleOne.PlayerScripts.PlayerMovement.Instance.canMove = false;
-                }
 
-                // Toggle input system
-                if (Il2CppScheduleOne.GameInput.Instance != null &&
-                    Il2CppScheduleOne.GameInput.Instance.PlayerInput != null)
-                {
+                if (Il2CppScheduleOne.GameInput.Instance != null && Il2CppScheduleOne.GameInput.Instance.PlayerInput != null)
                     Il2CppScheduleOne.GameInput.Instance.PlayerInput.m_InputActive = true;
-                }
 
                 Il2CppScheduleOne.PlayerScripts.PlayerCamera.Instance.SetFreeCam(ModStateS._freeCamEnabled);
 
@@ -223,5 +220,64 @@ namespace Modern_Cheat_Menu.Commands
                 ModLogger.Error($"Error drawing freecam overlay: {ex.Message}");
             }
         }
+
+        public static void SetTimeLength(string[] args)
+        {
+            try
+            {
+                float timeLength;
+                bool success = float.TryParse(args[0], out timeLength);
+                if (!success)
+                    return;
+                TimeManager.instance.TimeProgressionMultiplier = timeLength;
+
+                Notifier.ShowNotification("Set Time Length", $"TimeProgressionMultiplier has been set to: {TimeManager.instance.TimeProgressionMultiplier}" ,NotificationSystem.NotificationType.Success);
+            }
+            catch (System.Exception ex)
+            {
+                ModLogger.Error($"Error Set Time Length: {ex.Message}");
+                Notifier.ShowNotification("Error", "Failed to Set Time Length", NotificationSystem.NotificationType.Error);
+            }
+        }
+        public static void SetWorldTrashLimit(string[] args)
+        {
+            int trashLimit;
+            bool success = int.TryParse(args[0], out trashLimit);
+            if (!success)
+                return;
+
+            ModStateS.trashMaxLimit = trashLimit;
+            Notifier.ShowNotification("Max Trash Limit", $"Max Trash Limit was set to: {ModStateS.trashMaxLimit}", NotificationSystem.NotificationType.Success);
+        }
+        public static void SetAllSpawnRemovalVolumes(string[] args)
+        {
+            if (args.Length < 3)
+                return;
+
+            if (!int.TryParse(args[0], out int trashLimit) ||
+                !float.TryParse(args[1], out float TrashSpawnChance) ||
+                !float.TryParse(args[2], out float RemovealChance))
+                return;
+
+            int spawnvol = 0;
+            int removol = 0;
+
+            foreach (var trashSpawnVol in UnityEngine.Object.FindObjectsOfType<Il2CppScheduleOne.Trash.TrashSpawnVolume>())
+            {
+                trashSpawnVol.TrashLimit = trashLimit;
+                trashSpawnVol.TrashSpawnChance = TrashSpawnChance;
+                spawnvol++;
+            }
+
+            foreach (var trashRemovalVol in UnityEngine.Object.FindObjectsOfType<Il2CppScheduleOne.Trash.TrashRemovalVolume>())
+            {
+                trashRemovalVol.RemovalChance = RemovealChance;
+                removol++;
+            }
+
+            Notifier.ShowNotification("All Spawn Volumes", $"TrashLimit Set To: {trashLimit} | Spawn Chance Set To: {TrashSpawnChance} on {spawnvol} volumes.", NotificationSystem.NotificationType.Success);
+            Notifier.ShowNotification("All Removal Volumes", $"Removal Chance Set To: {RemovealChance} on {removol} volumes.", NotificationSystem.NotificationType.Success);
+        }
+
     }
 }

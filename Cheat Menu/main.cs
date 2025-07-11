@@ -1,40 +1,14 @@
 ﻿using System.Collections;
 using Il2CppInterop.Runtime;
 using MelonLoader;
+using Il2CppScheduleOne.ItemFramework;
 using UnityEngine;
 using Modern_Cheat_Menu.ModGUI;
 using Modern_Cheat_Menu.Library;
 using Modern_Cheat_Menu.Features;
 using Modern_Cheat_Menu.Commands;
 using Modern_Cheat_Menu.Settings;
-
-/*
-* ---------- Commands To Implement ----------
-* setqueststate | setquestentrystate 
-* setemotion | setrelationship
-* setdiscovered | setunlocked
-* ---------- Function Ideas ----------
-* Make every ATM spit out cash of any quantity and dollar amount. (Call it make it rain)
-* Make everyone/person puke
-* Tase everyone/person
-* Arrest everyone/person
-* Give everyone/person wanted level
-* Spam throw cars at people/everyone
-* Control vehicles on the map, maybe remote control someone's.
-* Trash Tornado around player/everyone?
-* Freeze their inputs/character controls
-* ------- Edits made ---------
-* setowned --- Own Property/Business  * COMPLETED
-* addemployee --- Add employee to property * COMPLETED
-* Refactored entire script.  Now multiple folders/files.
-* Created helped functions.
-* Improved performance.
-* Improved command system.
-* Add new commands, added new command category.
-* Max employee count is now 50. (Can be changed within the patch file | Employee spacing needs adjusting.)
-* Teleporter map works now. (Wasn't working before, at least for me)
-* Trash grabber patch - Allows for unlimited trash pick-up.
-*/
+using static Modern_Cheat_Menu.Library.GameplayUtils;
 
 [assembly: MelonInfo(typeof(Modern_Cheat_Menu.Core), Modern_Cheat_Menu.ModInfo.Name, Modern_Cheat_Menu.ModInfo.Version, Modern_Cheat_Menu.ModInfo.Author, null)]
 [assembly: MelonGame(Modern_Cheat_Menu.ModInfo.GameDevelopers, Modern_Cheat_Menu.ModInfo.NameOfGame)]
@@ -94,7 +68,7 @@ namespace Modern_Cheat_Menu
 
         public override void OnSceneWasLoaded(int buildIndex, string sceneName) // Must stay in core
         {
-            if (sceneName == "Main")
+            if (sceneName == "Main" || sceneName == "Tutorial")
             {
                 LoggerInstance.Msg("Main scene loaded, initializing cheat menu.");
 
@@ -120,14 +94,21 @@ namespace Modern_Cheat_Menu
 
                 // Cache game items
                 ModData.CacheGameItems();
+                ModData.CacheNPCData(); 
+                ModData.CacheEmotionPresets();
 
                 UIs._isInitialized = true;
 
                 // Subscribe to player death event - add this line
                 GameUtils.SubscribeToPlayerDeathEvent();
 
+
+                ModLogger.Info($"[Init] Local player cached: {LocalPlayerCache.Instance?.name}");
+
                 // Show notification
                 Notifier.ShowNotification($"{ModInfo.Name} Loaded", $"Press {ModSetting.CurrentMenuToggleKey} to toggle menu visibility", NotificationSystem.NotificationType.Success);
+
+                ModStateS.trashEstCache = UnityEngine.Object.FindObjectsOfType<Il2CppScheduleOne.Trash.TrashItem>().Count;
             }
             catch (Exception ex)
             {
@@ -160,7 +141,7 @@ namespace Modern_Cheat_Menu
             // Disable explosion key if we're in freecam mode as well as when the menu is open
             if (!((ModStateS._freeCamEnabled) || (UIs._uiVisible)))
             {
-                if (Input.GetKeyDown(ModSetting.CurrentExplosionAtCrosshairKey))
+                if (Input.GetKeyDown(ModSetting.CurrentExplosionAtCrosshairKey) && ExplosionManager.Enabled)
                 {
                     Ray ray = Camera.main.ScreenPointToRay(new Vector3(Screen.width / 2, Screen.height / 2, 0));
                     RaycastHit hit;
@@ -347,7 +328,7 @@ namespace Modern_Cheat_Menu
             Matrix4x4 originalMatrix = GUI.matrix;
             if (UIs._uiScale != 1.0f)
             {
-                Vector2 center = new Vector2(Screen.width / 2, Screen.height / 2);
+                Vector2 center = new Vector2(Screen.width / 1.8f, Screen.height / 2);
                 GUI.matrix = Matrix4x4.TRS(
                     center,
                     Quaternion.identity,
@@ -411,9 +392,13 @@ namespace Modern_Cheat_Menu
                 else
                 {
                     ModSetting.ToggleUI(false);
+                    ModData._isPropertiesE = false;
                 }
                 Event.current.Use();
             }
+
+
+
         }
     }
 }

@@ -65,5 +65,14 @@ namespace Modern_Cheat_Menu.Library
         public float _notificationDisplayTime = 3f;
         public float _notificationFadeTime = 0.5f;
 
+        // Modded Trash Vars
+        public float trashGrabberAutoRadius = 0.4f;
+        public bool drawTrashGrabberPickup = false;
+
+        public int trashMaxLimit = 2000;
+        public int trashEstCache = 0;
+        public bool patchSleepTrashLimit = false;
+
+
     }
 }

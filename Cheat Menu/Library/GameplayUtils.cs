@@ -1,7 +1,9 @@
-﻿using Il2CppScheduleOne.PlayerScripts.Health;
-using static Modern_Cheat_Menu.Core;
+﻿using static Modern_Cheat_Menu.Core;
+using static Modern_Cheat_Menu.Commands.WorldCommand;
+using Il2CppScheduleOne.PlayerScripts.Health;
 using System.Reflection;
 using UnityEngine;
+using Modern_Cheat_Menu.Commands;
 
 namespace Modern_Cheat_Menu.Library
 {
@@ -47,14 +49,10 @@ namespace Modern_Cheat_Menu.Library
                         ModLogger.Info("Successfully subscribed to player death event");
                     }
                     else
-                    {
                         ModLogger.Error("Player health or onDie event is null");
-                    }
                 }
                 else
-                {
                     ModLogger.Error("Local player not found for death event subscription");
-                }
             }
             catch (Exception ex)
             {
@@ -64,44 +62,33 @@ namespace Modern_Cheat_Menu.Library
 
         public void OnPlayerDeath()
         {
-            // Disable freecam on death.
             if (ModStateS._freeCamEnabled)
-            {
-                ModSetting.togglePlayerControllable(true);
-                ModStateS._freeCamEnabled = false;
-            }
+                ToggleFreeCam(new string[] { "banana" });
 
-            // Close the menu if it's open.
             if (UIs._uiVisible)
-            {
                 ModSetting.ToggleUI(false);
-            }
 
             UIs._needsStyleRecreation = true;
             UIs._needsStyleRecreation = true;
         }
 
-        // Add this method to your menu initialization
         public void ApplyLobbyPatch()
         {
             try
             {
-                // Find the FishySteamworks transport
                 var fishyTransports = Resources.FindObjectsOfTypeAll<Il2CppFishySteamworks.FishySteamworks>();
                 if (fishyTransports != null && fishyTransports.Length > 0)
                 {
                     var fishyTransport = fishyTransports[0];
                     if (fishyTransport != null)
                     {
-                        // Directly change the maximum clients value
-                        ModLogger.Info($"Current maximum clients: {fishyTransport._maximumClients}");
+                        ModLogger.Info($"Current maximum clients: {fishyTransport._maximumClients}"); // max b4
                         fishyTransport._maximumClients = 16; // Change to your desired value
-                        ModLogger.Info($"Changed maximum clients to: {fishyTransport._maximumClients}");
+                        ModLogger.Info($"Changed maximum clients to: {fishyTransport._maximumClients}"); // max after
 
-                        // Also modify server socket if available
                         if (fishyTransport._server != null)
                         {
-                            fishyTransport._server._maximumClients = 16;
+                            fishyTransport._server._maximumClients = 16; // modify server socket
                             ModLogger.Info("Also updated server socket maximum clients");
                         }
 
@@ -121,17 +108,13 @@ namespace Modern_Cheat_Menu.Library
             }
         }
 
-
         // Method to get a player's health component
         public static PlayerHealth GetPlayerHealth(Il2CppScheduleOne.PlayerScripts.Player player)
         {
             try
             {
                 if (player != null)
-                {
-                    // Try to get the health component directly
                     return player.GetComponent<PlayerHealth>();
-                }
             }
             catch (Exception ex)
             {
@@ -145,85 +128,64 @@ namespace Modern_Cheat_Menu.Library
             try
             {
                 var playerList = Il2CppScheduleOne.PlayerScripts.Player.PlayerList;
-                if (playerList != null)
+
+                if (playerList == null || playerList.Count == 0)
                 {
-                    // First check: Try to find player with IsLocalPlayer flag
+                    ModLogger.Error("PlayerList is null or empty!");
+                    return null;
+                }
 
-                    foreach (var player in playerList)
+                foreach (var player in playerList)
+                    if (player?.IsLocalPlayer == true) // ?isLocal?
+                        return player;
+
+                foreach (var player in playerList)
+                    if (player != null && player.name.Contains(SystemInfo.deviceName)) // ?Device match?
+                        return player;
+
+                foreach (var player in playerList)
+                {
+                    if (player == null)
+                        continue;
+
+                    var netBehavior = player.GetComponent<Il2CppFishNet.Object.NetworkBehaviour>();
+                    if (netBehavior?.IsOwner == true) // Network Ownership
+                        return player;
+
+                    var netObject = player.GetComponent<Il2CppFishNet.Object.NetworkObject>();
+                    if (netObject?.IsOwner == true) // Network Ownship
+                        return player;
+
+                    // Reflective ownership fallback
+                    var properties = player.GetType().GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                    foreach (var prop in properties)
                     {
-                        if (player != null && player.IsLocalPlayer)
+                        if (prop.PropertyType == typeof(bool))
                         {
-                            return player;
-                        }
-                    }
-
-                    // Second check: Try to find player with name matching device name
-                    foreach (var player in playerList)
-                    {
-                        if (player != null && player.name.Contains(SystemInfo.deviceName))
-                        {
-                            return player;
-                        }
-                    }
-
-                    // Third check: Try to find player with IsOwner flag or similar ownership flag
-                    foreach (var player in playerList)
-                    {
-                        if (player != null)
-                        {
-                            // Check for NetworkBehaviour and IsOwner
-                            var netBehavior = player.GetComponent<Il2CppFishNet.Object.NetworkBehaviour>();
-                            if (netBehavior != null && netBehavior.IsOwner)
+                            string name = prop.Name.ToLower();
+                            if (name.Contains("islocal") || name.Contains("isowner") || name.Contains("ismine"))
                             {
-                                return player;
-                            }
-
-                            // Check for NetworkObject and IsOwner
-                            var netObject = player.GetComponent<Il2CppFishNet.Object.NetworkObject>();
-                            if (netObject != null && netObject.IsOwner)
-                            {
-                                return player;
-                            }
-
-                            // Use reflection to check for any property that might indicate ownership
-                            var properties = player.GetType().GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                            foreach (var prop in properties)
-                            {
-                                string propName = prop.Name.ToLower();
-                                if ((propName.Contains("islocal") || propName.Contains("isowner") || propName.Contains("ismine")) &&
-                                    prop.PropertyType == typeof(bool))
+                                try
                                 {
-                                    try
-                                    {
-                                        bool value = (bool)prop.GetValue(player);
-                                        if (value)
-                                        {
-                                            return player;
-                                        }
-                                    }
-                                    catch { }
+                                    if ((bool)prop.GetValue(player))
+                                        return player;
                                 }
+                                catch { /* Ignore property errors */ }
                             }
                         }
                     }
-
-                    // As a last resort, if we only have one player, assume it's the local player
-                    if (playerList.Count == 1)
-                    {
-                        return playerList[0];
-                    }
-
-                    ModLogger.Error("Could not identify local player!");
                 }
-                else
-                {
-                    ModLogger.Error("PlayerList is null!");
-                }
+
+                if (playerList.Count == 1)
+                    return playerList[0]; // Assume local
+
+                ModLogger.Error("Could not identify local player.");
             }
             catch (Exception ex)
             {
                 ModLogger.Error($"Error finding local player: {ex.Message}");
             }
+
             return null;
         }
 
@@ -234,7 +196,7 @@ namespace Modern_Cheat_Menu.Library
             {
                 if (player != null)
                 {
-                    // Check if this player is the local player
+                    // is local player ??
                     return player.IsLocalPlayer ||
                            player.name.Contains(SystemInfo.deviceName);
                 }
@@ -242,5 +204,116 @@ namespace Modern_Cheat_Menu.Library
             catch { }
             return false;
         }
+
+        public static class LocalPlayerCache
+        {
+            private static Il2CppScheduleOne.PlayerScripts.Player _cached;
+
+            public static Il2CppScheduleOne.PlayerScripts.Player Instance
+            {
+                get
+                {
+                    if (_cached == null)
+                        _cached = GameplayUtils.FindLocalPlayer();
+                    return _cached;
+                }
+            }
+        }
+
+        // Mainly for debugging
+        public static void DrawLineInGame(Vector3 start, Vector3 end, Color color, float duration = 0.1f)
+        {
+            var go = new GameObject("DebugLine");
+            var lr = go.AddComponent<LineRenderer>();
+
+            lr.material = new Material(Shader.Find("Sprites/Default"));
+            lr.startColor = lr.endColor = color;
+            lr.startWidth = lr.endWidth = 0.02f;
+            lr.positionCount = 2;
+            lr.SetPosition(0, start);
+            lr.SetPosition(1, end);
+
+            UnityEngine.Object.Destroy(go, duration);
+        }
+
+        public static GameObject CreateDebugSphere(Vector3 pos, Color color, float duration = 1f)
+        {
+            var sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            sphere.transform.position = pos;
+            sphere.transform.localScale = Vector3.one * 0.2f;
+            var renderer = sphere.GetComponent<Renderer>();
+            if (renderer != null)
+                renderer.material.color = color;
+
+            UnityEngine.Object.Destroy(sphere, duration);
+            return sphere;
+        }
+        
+        public static void DrawBoxInGame(Vector3 center, Vector3 halfExtents, Quaternion rotation, Color color, float duration = 0.1f)
+        {
+            Vector3[] corners = new Vector3[8];
+            Vector3 extents = halfExtents;
+
+            // Calculate corners in local space
+            corners[0] = center + rotation * new Vector3(-extents.x, -extents.y, -extents.z);
+            corners[1] = center + rotation * new Vector3(extents.x, -extents.y, -extents.z);
+            corners[2] = center + rotation * new Vector3(extents.x, -extents.y, extents.z);
+            corners[3] = center + rotation * new Vector3(-extents.x, -extents.y, extents.z);
+
+            corners[4] = center + rotation * new Vector3(-extents.x, extents.y, -extents.z);
+            corners[5] = center + rotation * new Vector3(extents.x, extents.y, -extents.z);
+            corners[6] = center + rotation * new Vector3(extents.x, extents.y, extents.z);
+            corners[7] = center + rotation * new Vector3(-extents.x, extents.y, extents.z);
+
+            // Bottom rectangle
+            DrawLineInGame(corners[0], corners[1], color, duration);
+            DrawLineInGame(corners[1], corners[2], color, duration);
+            DrawLineInGame(corners[2], corners[3], color, duration);
+            DrawLineInGame(corners[3], corners[0], color, duration);
+
+            // Top rectangle
+            DrawLineInGame(corners[4], corners[5], color, duration);
+            DrawLineInGame(corners[5], corners[6], color, duration);
+            DrawLineInGame(corners[6], corners[7], color, duration);
+            DrawLineInGame(corners[7], corners[4], color, duration);
+
+            // Vertical edges
+            DrawLineInGame(corners[0], corners[4], color, duration);
+            DrawLineInGame(corners[1], corners[5], color, duration);
+            DrawLineInGame(corners[2], corners[6], color, duration);
+            DrawLineInGame(corners[3], corners[7], color, duration);
+        }
+        public static T GetComponentInSelfOrParents<T>(Transform start) where T : Component
+        {
+            var current = start;
+            while (current != null)
+            {
+                var comp = current.GetComponent<T>();
+                if (comp != null)
+                    return comp;
+
+                current = current.parent;
+            }
+            return null;
+        }
     }
+
+    // Trash Limit Mod Helper
+    public static class TrashLimitHelper
+    {
+        public static bool CanSpawnTrash()
+        {
+            if (ModStateS.trashEstCache > ModStateS.trashMaxLimit)
+                return false;
+
+            ModStateS.trashEstCache++;
+            return true;
+        }
+        public static void SetIsSleeping(bool _isSleeping)
+        {
+            ModStateS.patchSleepTrashLimit = _isSleeping;
+            ModLogger.Info($"[Sleep State] Update New State | is sleeping: {_isSleeping}");
+        }
+    }
+
 }

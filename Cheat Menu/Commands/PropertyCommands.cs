@@ -1,4 +1,5 @@
 ﻿using Modern_Cheat_Menu.Library;
+using static Il2CppMS.Internal.Xml.XPath.QueryBuilder;
 using static Modern_Cheat_Menu.Core;
 
 namespace Modern_Cheat_Menu.Commands
@@ -75,6 +76,45 @@ namespace Modern_Cheat_Menu.Commands
                 }
 
                 Notifier.ShowNotification("Success", $"[TrashSettings]TrashContainers set: radius={radius}, width={width}, capacity={capcity}", NotificationSystem.NotificationType.Success);
+            }
+            catch (System.Exception ex)
+            {
+                Notifier.ShowNotification("Error", $"TrashSettings Failed to set. ex: {ex}", NotificationSystem.NotificationType.Error);
+            }
+        }
+
+        public static void SetDumpsterSettings(string[] args)
+        {
+            if (args.Length < 1)
+            {
+                ModLogger.Error("amount required!");
+                Notifier.ShowNotification("Error", "An amount is required", NotificationSystem.NotificationType.Error);
+                return;
+            }
+
+            try
+            {
+
+                int spawnvol = 0;
+                int removol = 0;
+                // Get all trash container items in the scene
+                var allTrashSpawnVolume = UnityEngine.Object.FindObjectsOfType<Il2CppScheduleOne.Trash.TrashSpawnVolume>();
+                var allTrashRemovalVolume = UnityEngine.Object.FindObjectsOfType<Il2CppScheduleOne.Trash.TrashRemovalVolume>();
+
+                foreach (var trashSpawnVol in allTrashSpawnVolume)
+                {
+                    trashSpawnVol.TrashLimit = 150;
+                    trashSpawnVol.TrashSpawnChance = 1f;
+                    spawnvol++;
+                }
+
+                foreach (var trashRemovalVol in allTrashRemovalVolume)
+                {
+                    trashRemovalVol.RemovalChance = 0;
+                    removol++;
+                }
+
+                Notifier.ShowNotification("Success", $"[Dumpsters] All Spawn Volumes={spawnvol}, All Remover Chance={removol}", NotificationSystem.NotificationType.Success);
             }
             catch (System.Exception ex)
             {

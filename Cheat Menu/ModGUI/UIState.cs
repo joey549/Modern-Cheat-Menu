@@ -6,7 +6,8 @@ namespace Modern_Cheat_Menu.ModGUI
     {
         // UI settings
         public bool _uiVisible = false;
-        public Rect _windowRect = new Rect(20, 20, 900, 650);
+        //public Rect _windowRect = new Rect(20, 20, 900, 650);
+        public Rect _windowRect = new Rect( (Screen.width - 600f) / 2f, (Screen.height - 600f) / 2f, 800f, 600f);
         public Vector2 _scrollPosition = Vector2.zero;
         public int _selectedCategoryIndex = 0;
         public float _fadeInProgress = 0f;
@@ -31,7 +32,9 @@ namespace Modern_Cheat_Menu.ModGUI
         public Dictionary<string, float> _toggleAnimations = new Dictionary<string, float>();
         public Dictionary<string, Vector2> _itemGridAnimations = new Dictionary<string, Vector2>();
 
-        
+        public static string _activeDropdownKey = null;
+        public static Rect _activeDropdownRect;
+
         // IMGUI Styling
         public GUISkin _customSkin;
         public Texture2D _backgroundTexture;
@@ -74,8 +77,6 @@ namespace Modern_Cheat_Menu.ModGUI
         public GUIStyle _inputFieldStyle;
         public GUIStyle _searchBoxStyle;
         public GUIStyle _tooltipStyle;
-        public GUIStyle _itemButtonStyle;
-        public GUIStyle _itemSelectedStyle;
         public GUIStyle _closeButtonStyle;
         public GUIStyle _statusStyle;
         public GUIStyle _panelStyle;

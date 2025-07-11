@@ -3,16 +3,21 @@ using Modern_Cheat_Menu.Commands;
 using Modern_Cheat_Menu.Library;
 using Modern_Cheat_Menu.Settings;
 using UnityEngine;
+using Modern_Cheat_Menu.ModGUI.UIManager;
+using Il2CppScheduleOne.Management.Presets.Options;
+using UnityEngine.InputSystem;
 
 namespace Modern_Cheat_Menu.ModGUI
 {
     internal class DrawCoreUI
     {
-        
-        public static void ShowDropdownMenu(CommandCore.CommandParameter param)
+        public static string _selectedId;
+        public static string _SearchText;
+        public static Vector2 _ScrollPosition = Vector2.zero;
+
+        public static void ShowDropdownMenu(CommandCore.CommandParameter param, Rect commandRect)
         {
             // Explicit logging
-
             if (param == null)
             {
                 Debug.LogError("CommandParameter is NULL!");
@@ -25,20 +30,43 @@ namespace Modern_Cheat_Menu.ModGUI
                 return;
             }
 
-            var items = ModData._itemCache[param.ItemCacheKey];
+            ModLogger.Info($"DrawCoreUI: param: {param} rect: {commandRect}");
 
-            // Default to first item if none selected
-            if (string.IsNullOrEmpty(param.Value) && items.Count > 0)
-                param.Value = items[0];
-
-            // Get current index
-            int currentIndex = items.IndexOf(param.Value);
-
-            // Cycle to the next value, wrapping around
-            int nextIndex = (currentIndex + 1) % items.Count;
-            param.Value = items[nextIndex];
+            ModData._commandParam = param;
+            ModData._commandRect = commandRect;
+            ModData._isPropertiesE = true;
 
         }
+
+        public static void DrawDropDownMenu()
+        {
+            CommandCore.CommandParameter param = ModData._commandParam;
+            Rect commandRect = ModData._commandRect;
+
+            var items = ModData._itemCache[param.ItemCacheKey];
+
+            GUILayout.BeginHorizontal(UIs._headerStyle);
+            GUILayout.Label("Select choice: ", UIs._titleStyle, GUILayout.ExpandWidth(true));
+
+            if (GUILayout.Button("X", UIs._iconButtonStyle, GUILayout.Width(30), GUILayout.Height(30)))
+                ModData._isPropertiesE = false;
+
+            GUILayout.EndHorizontal();
+
+            Rect dropdownRect = new Rect(25f, 50 + commandRect.height, commandRect.width, items.Count * 25f);
+            GUI.Box(dropdownRect, "");
+
+            for (int i = 0; i < items.Count; i++)
+            {
+                Rect itemRect = new Rect(dropdownRect.x, dropdownRect.y + i * 25f, dropdownRect.width, 25f);
+                if (GUI.Button(itemRect, items[i]))
+                {
+                    param.Value = items[i];
+                    ModData._isPropertiesE = false;
+                }
+            }
+        }
+
         public static void DrawWindow(int windowId)
         {
             try
@@ -82,7 +110,10 @@ namespace Modern_Cheat_Menu.ModGUI
                     else
                     {
                         // Draw based on selected category
-                        DrawSelectedCategory();
+                        if (!ModData._isPropertiesE)
+                            DrawSelectedCategory();
+                        else
+                            DrawDropDownMenu();
                     }
                 }
                 finally
@@ -108,11 +139,14 @@ namespace Modern_Cheat_Menu.ModGUI
 
             var category = ModData._categories[UIs._selectedCategoryIndex];
 
-            // Different handling based on category name
+            // Different handling based on category name 
             switch (category.Name)
             {
                 case "Item Manager":
-                    DrawCommandUI.DrawItemManager();
+                    ItemManager.DrawItemManager();
+                    break;
+                case "NPC Manager":
+                    NPCManager.DrawNPCManager();
                     break;
                 case "Online":
                     DrawPlayerMap.DrawOnlinePlayers();
@@ -138,6 +172,7 @@ namespace Modern_Cheat_Menu.ModGUI
                 if (GUILayout.Button("X", UIs._iconButtonStyle, GUILayout.Width(30), GUILayout.Height(30)))
                 {
                     UIs._showSettings = false;
+                    ModData._isPropertiesE = false; // bad hacky fix
                 }
                 GUILayout.EndHorizontal();
 
@@ -154,7 +189,7 @@ namespace Modern_Cheat_Menu.ModGUI
                 // UI Scale slider
                 GUILayout.BeginHorizontal();
                 GUILayout.Label("UI Scale:", GUILayout.Width(120));
-                float newScale = GUILayout.HorizontalSlider(UIs._uiScale, 0.7f, 1.5f, UIs._sliderStyle ?? GUI.skin.horizontalSlider,
+                float newScale = GUILayout.HorizontalSlider(UIs._uiScale, 0.7f, 2.5f, UIs._sliderStyle ?? GUI.skin.horizontalSlider,
                                                        UIs._sliderThumbStyle ?? GUI.skin.horizontalSliderThumb, GUILayout.Width(200));
                 if (newScale != UIs._uiScale)
                 {
@@ -294,6 +329,15 @@ namespace Modern_Cheat_Menu.ModGUI
         {
             string itemId = ModData._itemDictionary[itemName];
             ModStateS._currentTooltip = $"Item: {itemName}\nID: {itemId}";
+            ModStateS._tooltipPosition = new Vector2(hoverRect.xMax + 10, hoverRect.y);
+            ModStateS._showTooltip = true;
+            ModStateS._tooltipTimer = 0f;
+        }
+
+        public static void ShowNPCTip(string npcName, Rect hoverRect)
+        {
+            string npcID = ModData._npcDictionary[npcName];
+            ModStateS._currentTooltip = $"NPCName: {npcName}\nID: {npcID}";
             ModStateS._tooltipPosition = new Vector2(hoverRect.xMax + 10, hoverRect.y);
             ModStateS._showTooltip = true;
             ModStateS._tooltipTimer = 0f;

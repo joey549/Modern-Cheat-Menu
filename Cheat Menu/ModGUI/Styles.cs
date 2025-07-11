@@ -1,6 +1,7 @@
 ﻿using static Modern_Cheat_Menu.Core;
 using Modern_Cheat_Menu.Library;
 using UnityEngine;
+using Modern_Cheat_Menu.ModGUI.UIManager;
 
 namespace Modern_Cheat_Menu.ModGUI
 {
@@ -176,9 +177,14 @@ namespace Modern_Cheat_Menu.ModGUI
                 UIs._categoryButtonActiveStyle.normal.background = UIs._buttonActiveTexture;
 
                 // Item button style
-                UIs._itemButtonStyle = new GUIStyle(UIs._buttonStyle);
-                UIs._itemSelectedStyle = new GUIStyle(UIs._itemButtonStyle);
-                UIs._itemSelectedStyle.normal.background = UIs._buttonActiveTexture;
+                ItemManager._itemButtonStyle = new GUIStyle(UIs._buttonStyle);
+                ItemManager._itemSelectedStyle = new GUIStyle(ItemManager._itemButtonStyle);
+                ItemManager._itemSelectedStyle.normal.background = UIs._buttonActiveTexture;
+
+                // NPC button style
+                NPCManager._npcButtonStyle = new GUIStyle(UIs._buttonStyle);
+                NPCManager._npcSelectedStyle = new GUIStyle(NPCManager._npcButtonStyle);
+                NPCManager._npcSelectedStyle.normal.background = UIs._buttonActiveTexture;
 
                 UIs._stylesInitialized = true;
             }

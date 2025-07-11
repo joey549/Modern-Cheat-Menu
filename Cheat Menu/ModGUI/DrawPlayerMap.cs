@@ -47,7 +47,8 @@ namespace Modern_Cheat_Menu.ModGUI
 
                 // Total players count display
                 GUILayout.FlexibleSpace();
-                GUILayout.Label($"Total Players: {PlayerCache._onlinePlayers.Count}", UIs._labelStyle, GUILayout.Width(150));
+                GUILayout.Label($"Total Players: {PlayerCache._onlinePlayers.Count}", UIs._labelStyle, GUILayout.Width(120));
+                GUILayout.Label($"Trash/TrashMax: {ModStateS.trashEstCache} / {ModStateS.trashMaxLimit}", UIs._labelStyle, GUILayout.Width(150)); // probably not the best spot
                 GUILayout.EndHorizontal();
 
                 GUILayout.Space(5); // Reduced spacing

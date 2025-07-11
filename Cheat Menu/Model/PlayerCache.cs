@@ -1,10 +1,23 @@
 ﻿using Il2CppFishNet.Object;
 using Il2CppScheduleOne.Equipping;
+using Il2CppScheduleOne.PlayerScripts.Health;
 using Modern_Cheat_Menu.Library;
 using UnityEngine;
 
 namespace Modern_Cheat_Menu.Model
 {
+
+    public class OnlinePlayerInfo
+    {
+        public Il2CppScheduleOne.PlayerScripts.Player Player { get; set; }
+        public string Name { get; set; }
+        public string SteamID { get; set; }
+        public string ServerBindAddress { get; set; }
+        public string ClientAddress { get; set; }
+        public PlayerHealth Health { get; set; }
+        public bool IsLocal { get; set; }
+        public bool ExplodeLoop { get; set; }
+    }
     public static class PlayerCache
     {
         public static List<OnlinePlayerInfo> _onlinePlayers = new List<OnlinePlayerInfo>();
@@ -50,138 +63,90 @@ namespace Modern_Cheat_Menu.Model
 
         public static void RefreshOnlinePlayers()
         {
-            try
+            _onlinePlayers.Clear();
+
+            var playerList = Il2CppScheduleOne.PlayerScripts.Player.PlayerList;
+            if (playerList == null || playerList.Count == 0)
+                return;
+
+            var steamIdMap = BuildSteamIdMap();
+
+            foreach (var player in playerList)
             {
-                PlayerCache._onlinePlayers.Clear();
-                var playerList = Il2CppScheduleOne.PlayerScripts.Player.PlayerList;
+                if (player == null) continue;
 
-                if (playerList == null || playerList.Count == 0)
-                    return;
+                var playerName = player.name;
+                string steamId = ExtractSteamIdFromName(playerName);
+                bool isLocal = GameplayUtils.IsLocalPlayer(player);
+                string ipAddress = isLocal ? "Local Player" : steamId;
+                var health = GameplayUtils.GetPlayerHealth(player);
 
-                //LoggerInstance.Msg($"Total players in list: {playerList.Count}");
+                string networkInfo = "Unknown";
+                var netObj = player.GetComponent<Il2CppFishNet.Object.NetworkObject>();
 
-                // Get FishySteamworks transport instance
-                var fishyTransport = Resources.FindObjectsOfTypeAll<Il2CppFishySteamworks.FishySteamworks>().FirstOrDefault();
-                var serverSocket = fishyTransport?._server;
-
-                // Create a mapping of connection IDs to Steam IDs
-                Dictionary<int, string> connIdToSteamId = new Dictionary<int, string>();
-
-                // Extract Steam ID mappings from the server socket
-                if (serverSocket != null && serverSocket._steamIds != null)
+                if (netObj != null)
                 {
-                    try
-                    {
-                        var steamIds = serverSocket._steamIds.First;
-                        if (steamIds != null)
-                        {
-                            var getEnumerator = steamIds.GetType().GetMethod("GetEnumerator");
-                            if (getEnumerator != null)
-                            {
-                                var enumerator = getEnumerator.Invoke(steamIds, null);
-                                if (enumerator != null)
-                                {
-                                    var moveNext = enumerator.GetType().GetMethod("MoveNext");
-                                    var current = enumerator.GetType().GetProperty("Current");
+                    int ownerId = (int)netObj.OwnerId;
+                    networkInfo = $"Owner ID: {ownerId}, Spawned: {netObj.IsSpawned}, Is Owner: {netObj.IsOwner}";
 
-                                    if (moveNext != null && current != null)
-                                    {
-                                        while ((bool)moveNext.Invoke(enumerator, null))
-                                        {
-                                            var kvp = current.GetValue(enumerator);
-                                            if (kvp != null)
-                                            {
-                                                var key = kvp.GetType().GetProperty("Key")?.GetValue(kvp);
-                                                var value = kvp.GetType().GetProperty("Value")?.GetValue(kvp);
-
-                                                if (key != null && value != null)
-                                                {
-                                                    string steamId = key.ToString();
-                                                    int connId = Convert.ToInt32(value);
-                                                    connIdToSteamId[connId] = steamId;
-                                                    //LoggerInstance.Msg($"Mapped Connection ID {connId} to Steam ID {steamId}");
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        ModLogger.Error($"Error mapping connections to Steam IDs: {ex.Message}");
-                    }
+                    if (!isLocal && steamIdMap.TryGetValue(ownerId, out string mappedId))
+                        ipAddress = $"Steam ID: {mappedId}";
                 }
 
-                foreach (var player in playerList)
+                _onlinePlayers.Add(new OnlinePlayerInfo
                 {
-                    if (player == null) continue;
+                    Player = player,
+                    Name = playerName.Split('(')[0].Trim(),
+                    SteamID = steamId,
+                    ClientAddress = ipAddress,
+                    Health = health,
+                    IsLocal = isLocal,
+                    ExplodeLoop = false
+                });
+            }
+        }
 
-                    bool isLocal = GameplayUtils.IsLocalPlayer(player);
-                    var health = GameplayUtils.GetPlayerHealth(player);
+        private static Dictionary<int, string> BuildSteamIdMap()
+        {
+            var map = new Dictionary<int, string>();
 
-                    // Extract Steam ID from name
-                    string steamId = "Unknown";
-                    string playerName = player.name;
-                    int steamIdStart = playerName.IndexOf('(');
-                    int steamIdEnd = playerName.IndexOf(')');
+            try
+            {
+                var server = Resources.FindObjectsOfTypeAll<Il2CppFishySteamworks.FishySteamworks>()
+                                      .FirstOrDefault()?._server;
 
-                    if (steamIdStart != -1 && steamIdEnd != -1)
-                    {
-                        steamId = playerName.Substring(steamIdStart + 1, steamIdEnd - steamIdStart - 1);
-                    }
+                if (server?._steamIds?.First == null) return map;
 
-                    // Get network object for additional information
-                    var netObj = player.GetComponent<Il2CppFishNet.Object.NetworkObject>();
+                var enumerator = server._steamIds.First.GetType().GetMethod("GetEnumerator")?.Invoke(server._steamIds.First, null);
+                var moveNext = enumerator?.GetType().GetMethod("MoveNext");
+                var currentProp = enumerator?.GetType().GetProperty("Current");
 
-                    string networkInfo = "Unknown";
-                    string ipAddress = "Unknown";
+                while (enumerator != null && (bool)moveNext.Invoke(enumerator, null))
+                {
+                    var kvp = currentProp.GetValue(enumerator);
+                    var key = kvp?.GetType().GetProperty("Key")?.GetValue(kvp)?.ToString();
+                    var value = kvp?.GetType().GetProperty("Value")?.GetValue(kvp);
 
-                    if (netObj != null)
-                    {
-                        networkInfo = $"Owner ID: {netObj.OwnerId}, Spawned: {netObj.IsSpawned}, Is Owner: {netObj.IsOwner}";
-
-                        // For local player, set address to "Local Player"
-                        if (isLocal)
-                        {
-                            ipAddress = "Local Player";
-                        }
-                        else
-                        {
-                            // For remote players, set the address to the Steam ID from the mapping
-                            int ownerId = (int)netObj.OwnerId;
-                            if (connIdToSteamId.ContainsKey(ownerId))
-                            {
-                                ipAddress = $"Steam ID: {connIdToSteamId[ownerId]}";
-                            }
-                            else
-                            {
-                                // If no mapping, use the Steam ID from the player name
-                                ipAddress = $"Steam ID: {steamId}";
-                            }
-                        }
-                    }
-
-                    var playerInfo = new OnlinePlayerInfo
-                    {
-                        Player = player,
-                        Name = playerName.Split('(')[0].Trim(),
-                        SteamID = steamId,
-                        ClientAddress = ipAddress,
-                        Health = health,
-                        IsLocal = isLocal,
-                        ExplodeLoop = false
-                    };
-
-                    PlayerCache._onlinePlayers.Add(playerInfo);
+                    if (int.TryParse(value?.ToString(), out int connId) && key != null)
+                        map[connId] = key;
                 }
             }
             catch (Exception ex)
             {
-                ModLogger.Error($"Error refreshing online players: {ex.Message}");
+                ModLogger.Error($"Error building Steam ID map: {ex.Message}");
             }
+
+            return map;
         }
 
+
+        private static string ExtractSteamIdFromName(string name)
+        {
+            int start = name.IndexOf('(');
+            int end = name.IndexOf(')');
+            return (start != -1 && end != -1 && end > start)
+                ? name.Substring(start + 1, end - start - 1)
+                : "Unknown";
+        }
     }
 }

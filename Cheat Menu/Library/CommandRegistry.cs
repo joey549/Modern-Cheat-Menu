@@ -64,8 +64,24 @@ namespace Modern_Cheat_Menu.Library
             {
                 "cleaner",
                 "botanist",
-                "packager",
+                "handler",
                 "chemist"
+            };
+
+            ModData._itemCache["discover_targets"] = new List<string>
+            {
+                "babyblue",
+                "bikercrank",
+                "cocaine",
+                "cuke_effects",
+                "energy_drink_effects",
+                "glass",
+                "granddaddypurple",
+                "greencrack",
+                "meth",
+                "ogkush",
+                "sourdiesel",
+                "testweed"
             };
 
             ModLogger.Info($"Added {ModData._itemCache["explosion_targets"].Count} explosion targets to item cache.");
@@ -74,6 +90,7 @@ namespace Modern_Cheat_Menu.Library
             ModLogger.Info($"Added {ModData._itemCache["property_targets"].Count} properties to cache.");
             ModLogger.Info($"Added {ModData._itemCache["business_targets"].Count} business's to cache.");
             ModLogger.Info($"Added {ModData._itemCache["employee_targets"].Count} employee's to cache.");
+            ModLogger.Info($"Added {ModData._itemCache["discover_targets"].Count} discoverables to cache.");
 
             #endregion
 
@@ -81,6 +98,7 @@ namespace Modern_Cheat_Menu.Library
             var playerCategory = new CommandCore.CommandCategory { Name = "Self" };
             var exploitsCategory = new CommandCore.CommandCategory { Name = "Exploits" };
             var itemsCategory = new CommandCore.CommandCategory { Name = "Item Manager" };
+            var npcCategory = new CommandCore.CommandCategory { Name = "NPC Manager" };
             var worldCategory = new CommandCore.CommandCategory { Name = "World" };
             var propertyCategory = new CommandCore.CommandCategory { Name = "Property Manager" };
             var teleportCategory = new CommandCore.CommandCategory { Name = "Teleport Manager" };
@@ -204,6 +222,26 @@ namespace Modern_Cheat_Menu.Library
             });
             playerCategory.Commands.Add(new CommandCore.Command
             {
+                Name = "Set Trash Picker Box Size",
+                Description = "Sets Debug.",
+                Handler = PlayerCommand.SetTrashGrabberAutoSize,
+                Parameters = new List<CommandCore.CommandParameter> {
+                    new CommandCore.CommandParameter {
+                        Name = "Debug",
+                        Placeholder = "Debug",
+                        Type = CommandCore.ParameterType.Input,
+                        Value = "0.4"
+                    }
+                }
+            });
+            playerCategory.Commands.Add(new CommandCore.Command
+            {
+                Name = "Trash Grabber Auto Debug Box",
+                Description = "Enable/Disable trash grabber auto debug box.",
+                Handler = PlayerCommand.DrawTrashGrabberAutoBox
+            });
+            playerCategory.Commands.Add(new CommandCore.Command
+            {
                 Name = "Set Stamina Reserve",
                 Description = "Sets the player's stamina reserve.",
                 Handler = PlayerCommand.SetPlayerStaminaReserve,
@@ -230,7 +268,31 @@ namespace Modern_Cheat_Menu.Library
                 Handler = PlayerCommand.UnlimitedTrashGrabber
             });
 
-            #endregion 
+            playerCategory.Commands.Add(new CommandCore.Command
+            {
+                Name = "Set Discovered",
+                Description = "Set Item Discovered.",
+                Handler = PlayerCommand.SetDiscovered,
+                Parameters = new List<CommandCore.CommandParameter> {
+                    new CommandCore.CommandParameter
+                    {
+                        Name = "Item",
+                        Placeholder = "Select Item",
+                        Type = CommandCore.ParameterType.Dropdown,
+                        ItemCacheKey = "discover_targets",
+                        Value = "glass"  // Default value
+                    }
+                }
+            });
+
+            playerCategory.Commands.Add(new CommandCore.Command
+            {
+                Name = "Enable Shortcut Key Explosion(s)",
+                Description = "Use ALT(default) key to create an explosion at crosshair.",
+                Handler = PlayerCommand.EnableKeyExplosions
+            });
+
+            #endregion
 
             #region World category
 
@@ -294,12 +356,69 @@ namespace Modern_Cheat_Menu.Library
                     }
                 }
             });
+            worldCategory.Commands.Add(new CommandCore.Command
+            {
+                Name = "Set Time Length",
+                Description = "Sets the time progress multiplier. (Default: 1.0) Faster >1.0 | Slower <1.0",
+                Handler = WorldCommand.SetTimeLength,
+                Parameters = new List<CommandCore.CommandParameter> {
+                    new CommandCore.CommandParameter {
+                        Name = "TimeLength",
+                        Placeholder = "1.0",
+                        Type = CommandCore.ParameterType.Input,
+                        Value = "1.0"
+                    }
+                }
+            });
+
+            worldCategory.Commands.Add(new CommandCore.Command
+            {
+                Name = "Set Trash Limit",
+                Description = "Sets the trash limit. (Becarful)",
+                Handler = WorldCommand.SetWorldTrashLimit,
+                Parameters = new List<CommandCore.CommandParameter> {
+                    new CommandCore.CommandParameter {
+                        Name = "TrashLimit",
+                        Placeholder = "2000",
+                        Type = CommandCore.ParameterType.Input,
+                        Value = "2000"
+                    }
+                }
+            });
+
+            worldCategory.Commands.Add(new CommandCore.Command
+            {
+                Name = "Set All Spawn/Removal Volumes",
+                Description = "Set the Spawn and Removal: Limit/SpawnChance/RemovalChance.",
+                Handler = WorldCommand.SetAllSpawnRemovalVolumes,
+                Parameters = new List<CommandCore.CommandParameter> {
+                    new CommandCore.CommandParameter {
+                        Name = "trashLimit",
+                        Placeholder = "12",
+                        Type = CommandCore.ParameterType.Input,
+                        Value = "12"
+                    },
+                    new CommandCore.CommandParameter {
+                        Name = "TrashSpawnChance",
+                        Placeholder = "0.25",
+                        Type = CommandCore.ParameterType.Input,
+                        Value = "0.25"
+                    },
+                    new CommandCore.CommandParameter {
+                        Name = "RemovealChance",
+                        Placeholder = "1.0",
+                        Type = CommandCore.ParameterType.Input,
+                        Value = "1.0"
+                    }
+                }
+
+            });
 
             #endregion
 
             #region Property Category
 
-            playerCategory.Commands.Add(new CommandCore.Command
+            propertyCategory.Commands.Add(new CommandCore.Command
             {
                 Name = "Set Own Property",
                 Description = "Set own a property.",
@@ -505,6 +624,7 @@ namespace Modern_Cheat_Menu.Library
             ModData._categories.Add(playerCategory);
             ModData._categories.Add(exploitsCategory);
             ModData._categories.Add(itemsCategory);
+            ModData._categories.Add(npcCategory);
             ModData._categories.Add(worldCategory);
             ModData._categories.Add(propertyCategory);
             ModData._categories.Add(teleportCategory);

@@ -32,6 +32,8 @@
 	  <Compile Include="Features\CrosshairHandler.cs" />
 	  <Compile Include="Features\EmployeeNoLimitPatch.cs" />
 	  <Compile Include="Features\ExplosionManager.cs" />
+	  <Compile Include="Features\PlayerScriptPatch.cs" />
+	  <Compile Include="Features\QOLPatch.cs" />
 	  <Compile Include="Features\Teleporter.cs" />
 	  <Compile Include="Features\TrashGrabberPatch.cs" />
 	  <Compile Include="Library\CommandRegistry.cs" />
@@ -44,7 +46,6 @@
 	  <Compile Include="Library\NotificationSystem.cs" />
 	  <Compile Include="Model\GameEnums.cs" />
 	  <Compile Include="Model\PlayerCache.cs" />
-	  <Compile Include="Model\PlayerInfo.cs" />
 	  <Compile Include="ModGUI\CustomTextField.cs" />
 	  <Compile Include="ModGUI\DrawCommandUI.cs" />
 	  <Compile Include="ModGUI\DrawCoreUI.cs" />
@@ -52,6 +53,9 @@
 	  <Compile Include="ModGUI\DrawPlayerUI.cs" />
 	  <Compile Include="ModGUI\Styles.cs" />
 	  <Compile Include="main.cs" />
+	  <Compile Include="ModGUI\UIManager\ItemManager.cs" />
+	  <Compile Include="ModGUI\UIManager\ManagerHelper.cs" />
+	  <Compile Include="ModGUI\UIManager\NPCManager.cs" />
 	  <Compile Include="ModGUI\UIState.cs" />
 	  <Compile Include="modinfo.cs" />
 	  <Compile Include="Settings\ModSettings.cs" />

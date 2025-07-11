@@ -1,5 +1,6 @@
 ﻿using Il2CppScheduleOne.Equipping;
 using Il2CppScheduleOne.PlayerScripts.Health;
+using Il2CppScheduleOne.NPCs;
 using MelonLoader;
 using static Modern_Cheat_Menu.Core;
 using Modern_Cheat_Menu.Library;
@@ -8,6 +9,7 @@ using Modern_Cheat_Menu.Patches;
 using System.Reflection;
 using System.Collections;
 using UnityEngine;
+using Modern_Cheat_Menu.Features;
 
 namespace Modern_Cheat_Menu.Commands
 {
@@ -426,9 +428,7 @@ namespace Modern_Cheat_Menu.Commands
 
                             // Prevent death events
                             if (playerHealth.onDie != null)
-                            {
                                 playerHealth.onDie.RemoveAllListeners();
-                            }
                         }
                         else
                         {
@@ -645,7 +645,8 @@ namespace Modern_Cheat_Menu.Commands
 
         public static void UnlimitedTrashGrabber(string[] args)
         {
-        if (TrashGrabberPatch.Enabled)
+            ModLogger.Error($"Set TimeManager GetMethods: {typeof(Il2CppScheduleOne.GameTime.TimeManager).GetMethods()}");
+            if (TrashGrabberPatch.Enabled)
                 TrashGrabberPatch.Enabled = false;
             else
                 TrashGrabberPatch.Enabled = true;
@@ -653,6 +654,90 @@ namespace Modern_Cheat_Menu.Commands
             Notifier.ShowSuccess("Trash Grabber Capacity", TrashGrabberPatch.Enabled ? "Enabled infinite capacity!" : "Restored original capacity.");
         }
 
+        public static void SetDiscovered(string[] args)
+        {
+            try
+            {
+                string displayName = args.Length > 0 ? args[0] : null;
+                if (string.IsNullOrEmpty(displayName))
+                {
+                    Notifier.ShowError("Error", "Please select an item");
+                    return;
+                }
+
+                var cmd = new Il2CppScheduleOne.Console.SetDiscovered();
+                cmd.Execute(CommandCore.ToCommandList(displayName));
+
+                Notifier.ShowSuccess("Set Discovered", $"Discovered: {displayName})");
+            }
+            catch (Exception ex)
+            {
+                ModLogger.Error($"SetDiscovered failed: {ex.Message}");
+                Notifier.ShowError("Error", "Failed to set discovered item.");
+            }
+        }
+
+        public static void EnableKeyExplosions(string[] args)
+        {
+            if (ExplosionManager.Enabled)
+                ExplosionManager.Enabled = false;
+            else
+                ExplosionManager.Enabled = true;
+
+            Notifier.ShowSuccess("Explosion Key", ExplosionManager.Enabled ? "Enabled quick explosions!" : "Disabled quick explosions.");
+        }
+
+        public static void SetEmotion(string[] args)
+        {
+            try
+            {
+                
+                
+                string emotionName = args.Length > 0 ? args[0] : null;
+                
+                foreach (var kk in ModData._emotionCache)
+                {
+                    ModLogger.Error($"Set ModData._emotionCache: {kk}");
+                }
+
+                var cmd = new Il2CppScheduleOne.Console.SetEmotion();
+                cmd.Execute(CommandCore.ToCommandList("Zombie"));
+
+                //Notifier.ShowSuccess("Set Emotion", $"Emotion: ({emotion})");
+            }
+            catch (Exception ex)
+            {
+                ModLogger.Error($"Set Emotion failed: {ex.Message}");
+                Notifier.ShowError("Error", "Failed to set emotion item.");
+            }
+        }
+
+        public static void SetTrashGrabberAutoSize(string[] args)
+        {
+            if (!float.TryParse(args[0], out float debugv))
+                return;
+
+            try
+            {
+                ModStateS.trashGrabberAutoRadius = debugv;
+                Notifier.ShowNotification("debugv", $"debug set {debugv}", NotificationSystem.NotificationType.Success);
+            }
+            catch (Exception ex)
+            {
+                ModLogger.Error($"Unable to set debugv: {ex.Message}");
+            }
+        }
+        public static void DrawTrashGrabberAutoBox(string[] args)
+        {
+            if (ModStateS.drawTrashGrabberPickup)
+                ModStateS.drawTrashGrabberPickup = false;
+            else
+                ModStateS.drawTrashGrabberPickup = true;
+
+            Notifier.ShowNotification("Trash Grabber Debug Box", $"Box Visual {ModStateS.drawTrashGrabberPickup}", NotificationSystem.NotificationType.Success);
+        }
+
+        
         #region Weapons Modifications
         public static Equippable_RangedWeapon GetEquippedWeapon()
         {

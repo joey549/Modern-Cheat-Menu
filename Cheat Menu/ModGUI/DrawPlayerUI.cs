@@ -85,7 +85,7 @@ namespace Modern_Cheat_Menu.ModGUI
                                 // Dropdown-like button
                                 if (GUI.Button(paramRect, param.Value ?? "Select", UIs._buttonStyle))
                                 {
-                                    DrawCoreUI.ShowDropdownMenu(param);
+                                    DrawCoreUI.ShowDropdownMenu(param, commandRect);
                                 }
                             }
 

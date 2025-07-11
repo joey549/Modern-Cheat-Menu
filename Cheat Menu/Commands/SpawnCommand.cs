@@ -1,7 +1,7 @@
-﻿using Il2CppScheduleOne.PlayerScripts;
-using MelonLoader;
+﻿using MelonLoader;
 using static Modern_Cheat_Menu.Core;
 using Modern_Cheat_Menu.Library;
+using Il2CppScheduleOne.PlayerScripts;
 using System.Collections;
 
 namespace Modern_Cheat_Menu.Commands
@@ -86,12 +86,6 @@ namespace Modern_Cheat_Menu.Commands
         {
             try
             {
-                if (string.IsNullOrEmpty(ModStateS._selectedItemId))
-                {
-                    Notifier.ShowNotification("Package Product", "No item selected", NotificationSystem.NotificationType.Warning);
-                    return;
-                }
-
                 // Validate package type
                 if (packageType != "baggie" && packageType != "jar")
                 {

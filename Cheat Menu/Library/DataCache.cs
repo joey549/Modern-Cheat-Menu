@@ -4,6 +4,12 @@ using Il2CppScheduleOne.Product;
 using static Modern_Cheat_Menu.Core;
 using Modern_Cheat_Menu.Commands;
 using Modern_Cheat_Menu.ModGUI;
+using Il2CppScheduleOne.NPCs;
+using UnityEngine;
+using Il2CppScheduleOne.AvatarFramework.Emotions;
+using System.Reflection;
+using Unity.Collections;
+using Il2CppAdvancedPeopleSystem;
 
 namespace Modern_Cheat_Menu.Library
 {
@@ -17,8 +23,27 @@ namespace Modern_Cheat_Menu.Library
         public static Dictionary<string, List<string>> _vehicleCache = new Dictionary<string, List<string>>();
         public static Dictionary<string, List<string>> _itemCache = new Dictionary<string, List<string>>();
 
+        public static Dictionary<string, string> _npcDictionary = new();
+        public static Dictionary<string, List<string>> _npcCache = new Dictionary<string, List<string>>();
+        public static List<string> _emotionCache = new();
+
+        public static readonly Dictionary<int, string> RelationshipLevels = new()
+        {
+            { 0, "Hostile" },
+            { 1, "Unfriendly" },
+            { 2, "Neutral" },
+            { 3, "Friendly" },
+            { 4, "Loyal" },
+            { 5, "Loyal (MAX)" }
+        };
+
+
         public static Dictionary<string, bool> _qualitySupportCache = new Dictionary<string, bool>();
         public static Dictionary<string, List<string>> _itemQualityCache = new Dictionary<string, List<string>>();
+
+        public static CommandCore.CommandParameter _commandParam;
+        public static Rect _commandRect;
+        public static bool _isPropertiesE = false;
 
         // Player network interaction category
         public class NetworkPlayerCategory
@@ -211,6 +236,75 @@ namespace Modern_Cheat_Menu.Library
             {
                 ModLogger.Error($"Critical error in item discovery: {ex}");
                 Notifier.ShowNotification("Error", "Failed to discover game items", NotificationSystem.NotificationType.Error);
+            }
+        }
+        public static unsafe void CacheNPCData()
+        {
+            try
+            {
+                var npcDict = new Dictionary<string, string>();
+                var npcNames = new List<string>();
+
+                var npcRegistry = NPCManager.NPCRegistry;
+                if (npcRegistry == null)
+                {
+                    ModLogger.Error("NPC Registry is null!");
+                    return;
+                }
+
+                foreach (var npc in npcRegistry)
+                {
+                    var npcId = npc.fullName;
+                    var npcDef = npc.ID;
+
+                    if (npcDef == null) continue;
+
+                    if (!string.IsNullOrEmpty(npcDef) && !string.IsNullOrEmpty(npcId))
+                    {
+                        npcDict[npcId] = npcDef;
+                        npcNames.Add(npcId);
+                    }
+                }
+                
+                // Cache them globally
+                ModData._npcDictionary = npcDict;
+                ModData._npcCache["npcs"] = npcNames.OrderBy(n => n).ToList();
+
+                ModLogger.Info($"[NPC Cache] Cached {npcDict.Count} NPCs.");
+            }
+            catch (Exception ex)
+            {
+                ModLogger.Error($"Error while caching NPCs: {ex}");
+            }
+        }
+
+
+
+        public static void CacheEmotionPresets()
+        {
+            try
+            {
+                var type = typeof(Il2CppScheduleOne.AvatarFramework.Emotions.DefaultEmotions);
+                var fields = type.GetFields(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+
+                foreach (var field in fields)
+                {
+                    var emotionNames = new List<string>();
+
+                    if (field.Name.StartsWith("NativeFieldInfoPtr_"))
+                    {
+                        string emotionName = field.Name.Replace("NativeFieldInfoPtr_", "");
+                        emotionNames.Add(emotionName);
+
+                    }
+                    _emotionCache = emotionNames;
+                }
+
+                ModLogger.Info($"[Emotion Cache] Total: {_emotionCache.Count} emotion presets cached.");
+            }
+            catch (Exception ex)
+            {
+                ModLogger.Error($"[Emotion Cache] Failed to cache: {ex}");
             }
         }
     }
